@@ -128,6 +128,9 @@ class PosController extends Controller
             'discount_amount' => ['nullable', 'numeric', 'min:0'],
             'vat_enabled' => ['nullable', 'boolean'],
             'payment_method' => ['required', 'in:cash,card,gcash,bank_transfer'],
+            'pay_now' => ['nullable', 'boolean'],
+            'payment_reference' => ['nullable', 'string', 'max:100'],
+            'amount_paid' => ['nullable', 'numeric', 'min:0'],
             'notes' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -147,7 +150,8 @@ class PosController extends Controller
                 'discount_amount' => $totals['discount_amount'],
                 'vat_amount' => $totals['vat_amount'],
                 'total_amount' => $totals['total'],
-                'status' => Order::STATUS_COMPLETED,
+                // Create orders as pending by default; may be completed if paid now
+                'status' => Order::STATUS_PENDING,
                 'payment_method' => $validated['payment_method'],
                 'notes' => $validated['notes'] ?? null,
             ]);
@@ -194,9 +198,36 @@ class PosController extends Controller
             return $order;
         });
 
+        // If cashier chose to pay now, validate reference for non-cash and record payment
+        if ($request->boolean('pay_now')) {
+            if ($validated['payment_method'] !== 'cash' && empty($validated['payment_reference'])) {
+                throw ValidationException::withMessages([
+                    'payment_reference' => 'Reference is required for non-cash immediate payments.',
+                ]);
+            }
+
+            $amountPaid = $validated['amount_paid'] ?? $totals['total'];
+            // require amount paid to cover total when marking completed
+            if ($amountPaid < $totals['total']) {
+                throw ValidationException::withMessages([
+                    'amount_paid' => 'Amount paid is less than order total.',
+                ]);
+            }
+
+            $order->payments()->create([
+                'user_id' => $request->user()->id,
+                'method' => $validated['payment_method'],
+                'amount' => $amountPaid,
+                'reference' => $validated['payment_reference'] ?? null,
+                'notes' => 'Paid at checkout',
+            ]);
+
+            $order->update(['status' => Order::STATUS_COMPLETED]);
+        }
+
         $request->session()->forget('pos_cart');
 
-        return redirect()->route('orders.receipt', $order)->with('success', 'Transaction completed. Receipt ready for printing.');
+        return redirect()->route('orders.receipt', $order)->with('success', 'Transaction recorded.' );
     }
 
     public function receipt(Order $order): View

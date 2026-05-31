@@ -7,7 +7,12 @@
             <h1 class="h4 mb-1">Order #{{ $order->id }}</h1>
             <div class="text-muted">{{ $order->created_at->format('M d, Y h:i A') }}</div>
         </div>
-        <a href="{{ route('orders.receipt', $order) }}" class="btn btn-outline-dark">Print Receipt</a>
+        <div>
+            <a href="{{ route('orders.receipt', $order) }}" class="btn btn-outline-dark">Print Receipt</a>
+            @if($order->status === 'pending')
+                <button class="btn btn-success pay-btn" data-id="{{ $order->id }}" data-total="{{ $order->total_amount }}">Pay</button>
+            @endif
+        </div>
     </div>
 
     <div class="row g-3 mb-3">
@@ -38,3 +43,21 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('click', event => {
+    if (!event.target.classList.contains('pay-btn')) return;
+    const id = event.target.dataset.id;
+    const total = Number(event.target.dataset.total) || 0;
+    // reuse the modal logic from index: create if missing and show
+    const showPaymentModal = window.showPaymentModal;
+    if (typeof showPaymentModal === 'function') {
+        showPaymentModal(id, total);
+    } else {
+        // fallback: redirect to orders index where modal exists
+        window.location.href = '/orders';
+    }
+});
+</script>
+@endpush

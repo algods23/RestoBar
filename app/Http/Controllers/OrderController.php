@@ -40,4 +40,30 @@ class OrderController extends Controller
 
         return back()->with('success', 'Order status updated.');
     }
+
+    public function pay(Request $request, Order $order): RedirectResponse
+    {
+
+        $validated = $request->validate([
+            'method' => ['required', 'in:cash,card,gcash,bank_transfer'],
+            'amount' => ['required', 'numeric', 'min:0'],
+            // reference required when method is not cash
+            'reference' => ['required_unless:method,cash', 'nullable', 'string', 'max:100'],
+            'notes' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        // Create payment record
+        $order->payments()->create([
+            'user_id' => $request->user()->id,
+            'method' => $validated['method'],
+            'amount' => $validated['amount'],
+            'reference' => $validated['reference'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        // Mark order as completed
+        $order->update(['status' => Order::STATUS_COMPLETED]);
+
+        return back()->with('success', 'Payment recorded and order completed.');
+    }
 }

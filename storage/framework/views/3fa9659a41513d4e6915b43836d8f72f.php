@@ -54,6 +54,11 @@
                     <label class="form-label">Discount</label>
                     <input type="number" step="0.01" name="discount_amount" class="form-control" value="0">
                 </div>
+                <div class="mb-2" id="pos_amount_paid_row" style="display:none">
+                    <label class="form-label">Amount Paid</label>
+                    <input type="number" step="0.01" name="amount_paid" id="pos_amount_paid" class="form-control" min="0">
+                    <div class="form-text small text-muted">Change: <span id="pos_change">0.00</span></div>
+                </div>
                 <div class="mb-2">
                     <label class="form-label">Payment Method</label>
                     <select name="payment_method" class="form-select">
@@ -62,6 +67,19 @@
                         <option value="gcash">GCash</option>
                         <option value="bank_transfer">Bank Transfer</option>
                     </select>
+                </div>
+                <div class="mb-2" id="pos_amount_paid_row">
+                    <label class="form-label">Amount Paid</label>
+                    <input type="number" step="0.01" name="amount_paid" id="pos_amount_paid" class="form-control" min="0">
+                    <div class="form-text small text-muted">Change: <span id="pos_change">0.00</span></div>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" name="pay_now" id="payNow">
+                    <label class="form-check-label" for="payNow">Pay now (record payment)</label>
+                </div>
+                <div class="mb-2" id="pos_reference_row" style="display:none">
+                    <label class="form-label">Reference</label>
+                    <input type="text" name="payment_reference" id="pos_payment_reference" class="form-control">
                 </div>
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="checkbox" value="1" name="vat_enabled" id="vatEnabled" checked>
@@ -96,6 +114,9 @@ function renderCart(payload) {
         return;
     }
 
+    // store last payload for client-side recalculations
+    window.lastCartPayload = payload;
+
     cartItems.innerHTML = `
         <div class="table-responsive">
             <table class="table align-middle">
@@ -112,11 +133,11 @@ function renderCart(payload) {
                 </tbody>
             </table>
         </div>
-        <div class="border-top pt-2 small">
-            <div class="d-flex justify-content-between"><span>Subtotal</span><strong>${money(totals.subtotal)}</strong></div>
-            <div class="d-flex justify-content-between"><span>Discount</span><strong>${money(totals.discount_amount)}</strong></div>
-            <div class="d-flex justify-content-between"><span>VAT</span><strong>${money(totals.vat_amount)}</strong></div>
-            <div class="d-flex justify-content-between fs-5"><span>Total</span><strong>${money(totals.total)}</strong></div>
+        <div id="cartTotals" class="border-top pt-2 small">
+            <div class="d-flex justify-content-between"><span>Subtotal</span><strong id="cart_subtotal">${money(totals.subtotal)}</strong></div>
+            <div class="d-flex justify-content-between"><span>Discount</span><strong id="cart_discount">${money(totals.discount_amount)}</strong></div>
+            <div class="d-flex justify-content-between"><span>VAT</span><strong id="cart_vat">${money(totals.vat_amount)}</strong></div>
+            <div class="d-flex justify-content-between fs-5"><span>Total</span><strong id="cart_total">${money(totals.total)}</strong></div>
         </div>`;
 }
 
@@ -167,22 +188,30 @@ function productCard(product) {
 }
 
 function bindAddButtons(container) {
+    // use event delegation for reliability
     container.querySelectorAll('.add-product-card').forEach(button => {
-        button.addEventListener('click', async () => {
-            const payload = await postJson(`<?php echo e(route('pos.cart.add')); ?>`, { product_id: button.dataset.id, quantity: 1 });
+        // ensure buttons are focusable/clickable
+        button.setAttribute('type', 'button');
+    });
+    if (container instanceof Element && container.id === 'productGrid') {
+        container.addEventListener('click', async event => {
+            const btn = event.target.closest('.add-product-card');
+            if (!btn) return;
+            const payload = await postJson(`<?php echo e(route('pos.cart.add')); ?>`, { product_id: btn.dataset.id, quantity: 1 });
             renderCart(payload);
         });
-    });
+    } else {
+        container.querySelectorAll('.add-product-card').forEach(button => {
+            button.addEventListener('click', async () => {
+                const payload = await postJson(`<?php echo e(route('pos.cart.add')); ?>`, { product_id: button.dataset.id, quantity: 1 });
+                renderCart(payload);
+            });
+        });
+    }
 }
 
 bindAddButtons(document);
 
-document.querySelectorAll('.add-product-card').forEach(button => {
-    button.addEventListener('click', async () => {
-        const payload = await postJson(`<?php echo e(route('pos.cart.add')); ?>`, { product_id: button.dataset.id, quantity: 1 });
-        renderCart(payload);
-    });
-});
 
 document.getElementById('searchBtn').addEventListener('click', searchProducts);
 resetBtn.addEventListener('click', () => {
@@ -214,6 +243,48 @@ cartItems.addEventListener('change', async event => {
     }
 });
 
+// Recalculate totals client-side when discount, VAT or amount paid changes
+const discountInput = document.querySelector('input[name="discount_amount"]');
+const vatCheckbox = document.querySelector('input[name="vat_enabled"]');
+const amountPaidInput = document.getElementById('pos_amount_paid');
+
+function computeTotalsFromPayload(payload) {
+    const subtotal = Number(payload.totals.subtotal || 0);
+    const discount = Number(discountInput?.value || 0);
+    const vatEnabled = vatCheckbox?.checked ?? true;
+    const vat = vatEnabled ? Math.round((Math.max(0, subtotal - discount) * 0.12) * 100) / 100 : 0;
+    const total = Math.max(0, Math.round((subtotal - discount + vat) * 100) / 100);
+    return { subtotal, discount, vat, total };
+}
+
+function updateTotalsDisplay() {
+    const payload = window.lastCartPayload || { totals: { subtotal: 0 } };
+    const calc = computeTotalsFromPayload(payload);
+    document.getElementById('cart_subtotal').textContent = money(calc.subtotal);
+    document.getElementById('cart_discount').textContent = money(calc.discount);
+    document.getElementById('cart_vat').textContent = money(calc.vat);
+    document.getElementById('cart_total').textContent = money(calc.total);
+
+    // update change due if amount paid present
+    if (amountPaidInput) {
+        const paid = Number(amountPaidInput.value || 0);
+        const change = Math.max(0, Math.round((paid - calc.total) * 100) / 100);
+        const changeEl = document.getElementById('pos_change');
+        if (changeEl) changeEl.textContent = Number.isFinite(change) ? change.toFixed(2) : '0.00';
+    }
+}
+
+if (discountInput) discountInput.addEventListener('input', updateTotalsDisplay);
+if (vatCheckbox) vatCheckbox.addEventListener('change', updateTotalsDisplay);
+if (amountPaidInput) amountPaidInput.addEventListener('input', updateTotalsDisplay);
+
+// ensure totals update after render
+const originalRenderCart = renderCart;
+renderCart = function(payload) {
+    originalRenderCart(payload);
+    updateTotalsDisplay();
+};
+
 cartItems.addEventListener('click', async event => {
     if (event.target.classList.contains('remove-item')) {
         event.preventDefault();
@@ -244,6 +315,26 @@ document.getElementById('checkoutForm').addEventListener('submit', async event =
         window.location.reload();
     }
 });
+
+// Show/hide reference field when payment method changes or pay_now toggled
+const paymentMethodSelect = document.querySelector('select[name="payment_method"]');
+const payNowCheckbox = document.getElementById('payNow');
+const posReferenceRow = document.getElementById('pos_reference_row');
+const posReferenceInput = document.getElementById('pos_payment_reference');
+
+function updatePosReferenceVisibility() {
+    if (payNowCheckbox.checked && paymentMethodSelect.value !== 'cash') {
+        posReferenceRow.style.display = '';
+        posReferenceInput.setAttribute('required', 'required');
+    } else {
+        posReferenceRow.style.display = 'none';
+        posReferenceInput.removeAttribute('required');
+    }
+}
+
+paymentMethodSelect.addEventListener('change', updatePosReferenceVisibility);
+payNowCheckbox.addEventListener('change', updatePosReferenceVisibility);
+updatePosReferenceVisibility();
 </script>
 <?php $__env->stopPush(); ?>
 
