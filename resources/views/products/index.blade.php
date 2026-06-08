@@ -48,5 +48,6 @@
             @endforeach
         </tbody>
     </table>
+    {{ $products->links('pagination.default') }}
 </div>
 @endsection

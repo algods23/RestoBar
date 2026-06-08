@@ -59,6 +59,7 @@
                     @endforeach
                 </tbody>
             </table>
+            {{ $logs->links('pagination.default') }}
         </div>
     </div>
 </div>

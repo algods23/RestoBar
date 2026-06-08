@@ -13,7 +13,7 @@ class InventoryController extends Controller
 {
     public function index(): View
     {
-        $logs = Inventory::with(['product', 'user', 'order'])->latest()->paginate(20);
+        $logs = Inventory::with(['product', 'user', 'order'])->latest()->paginate(10);
         $lowStockProducts = Product::with('category')
             ->whereColumn('stock', '<=', 'reorder_level')
             ->orderBy('name')

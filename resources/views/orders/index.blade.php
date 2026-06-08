@@ -23,6 +23,7 @@
             @endforeach
         </tbody>
     </table>
+    {{ $orders->links('pagination.default') }}
 </div>
 @endsection
 
