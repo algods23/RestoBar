@@ -7,6 +7,10 @@
         @csrf
         @if($method !== 'POST') @method($method) @endif
         <div class="row g-3">
+             <div class="col-md-6">
+                <label class="form-label">Name</label>
+                <input name="name" class="form-control" value="{{ old('name', $product->name) }}" required>
+            </div>
             <div class="col-md-6">
                 <label class="form-label">Category</label>
                 <select name="category_id" class="form-select" required>
@@ -15,14 +19,7 @@
                     @endforeach
                 </select>
             </div>
-            <div class="col-md-6">
-                <label class="form-label">Name</label>
-                <input name="name" class="form-control" value="{{ old('name', $product->name) }}" required>
-            </div>
-            <div class="col-md-6">
-                <label class="form-label">Barcode</label>
-                <input name="barcode" class="form-control" value="{{ old('barcode', $product->barcode) }}">
-            </div>
+
             <div class="col-md-6">
                 <label class="form-label">Image</label>
                 <input name="image" type="file" accept="image/*" class="form-control">
@@ -38,10 +35,6 @@
             <div class="col-md-3">
                 <label class="form-label">Stock</label>
                 <input name="stock" type="number" min="0" class="form-control" value="{{ old('stock', $product->stock) }}" required>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label">Reorder Level</label>
-                <input name="reorder_level" type="number" min="0" class="form-control" value="{{ old('reorder_level', $product->reorder_level) }}">
             </div>
             <div class="col-md-3">
                 <label class="form-label">Status</label>

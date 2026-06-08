@@ -13,11 +13,22 @@ use Illuminate\View\View;
 
 class ProductController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $products = Product::with('category')->latest()->paginate(12);
+        $query = Product::with('category');
 
-        return view('products.index', compact('products'));
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
+
+        if ($request->filled('category_id')) {
+            $query->where('category_id', $request->category_id);
+        }
+
+        $products = $query->latest()->paginate(12)->withQueryString();
+        $categories = Category::orderBy('name')->get();
+
+        return view('products.index', compact('products', 'categories'));
     }
 
     public function create(): View
@@ -98,11 +109,9 @@ class ProductController extends Controller
         return $request->validate([
             'category_id' => ['required', 'exists:categories,id'],
             'name' => ['required', 'string', 'max:150', Rule::unique('products', 'name')->ignore($productId)],
-            'barcode' => ['nullable', 'string', 'max:100', Rule::unique('products', 'barcode')->ignore($productId)],
             'image' => ['nullable', 'image', 'max:4096'],
             'price' => ['required', 'numeric', 'min:0'],
             'stock' => ['required', 'integer', 'min:0'],
-            'reorder_level' => ['nullable', 'integer', 'min:0'],
             'status' => ['required', 'in:available,out_of_stock,inactive'],
             'description' => ['nullable', 'string'],
         ]);

@@ -6,6 +6,25 @@
     <a href="{{ route('products.create') }}" class="btn btn-dark">Add Product</a>
 </div>
 
+<div class="card p-3 mb-3">
+    <form action="{{ route('products.index') }}" method="GET" class="row g-2">
+        <div class="col-md-5">
+            <input type="text" name="search" class="form-control" placeholder="Search by name..." value="{{ request('search') }}">
+        </div>
+        <div class="col-md-5">
+            <select name="category_id" class="form-select">
+                <option value="">All Categories</option>
+                @foreach($categories as $category)
+                    <option value="{{ $category->id }}" @selected(request('category_id') == $category->id)>{{ $category->name }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-dark w-100">Filter</button>
+        </div>
+    </form>
+</div>
+
 <div class="card p-3">
     <table class="table align-middle">
         <thead><tr><th>Image</th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead>
@@ -29,6 +48,5 @@
             @endforeach
         </tbody>
     </table>
-    {{ $products->links() }}
 </div>
 @endsection
