@@ -1,11 +1,8 @@
 
-
 <?php $__env->startSection('content'); ?>
 <div class="row g-3">
-
     
     <div class="col-lg-8">
-
         
         <div class="card p-3 mb-3">
             <div class="row g-2 align-items-end">
@@ -23,7 +20,6 @@
                 </div>
             </div>
         </div>
-
         
         <div class="card px-3 pt-3 pb-2 mb-3">
             <div class="d-flex flex-wrap gap-2">
@@ -36,7 +32,6 @@
                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </div>
         </div>
-
         
         <div class="card p-3">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -105,21 +100,19 @@
             
             <form id="checkoutForm" class="mt-3">
                 <?php echo csrf_field(); ?>
-
                 <div class="mb-2">
                     <label class="form-label">Order Type</label>
-                    <select name="order_type" class="form-select">
+                    <select name="order_type" id="orderTypeSelect" class="form-select">
                         <option value="dine_in">Dine-in</option>
                         <option value="takeout">Takeout</option>
+                        <option value="mixed">Mixed (Dine-in + Takeout)</option>
                         <option value="delivery">Delivery</option>
                     </select>
                 </div>
-
                 <div class="mb-2">
                     <label class="form-label">Discount (₱)</label>
                     <input type="number" step="0.01" name="discount_amount" id="discountInput" class="form-control" value="0" min="0">
                 </div>
-
                 <div class="mb-2">
                     <label class="form-label">Payment Method</label>
                     <select name="payment_method" id="paymentMethodSelect" class="form-select">
@@ -129,25 +122,21 @@
                         <option value="bank_transfer">Bank Transfer</option>
                     </select>
                 </div>
-
                 
                 <div class="mb-2" id="amountPaidRow">
                     <label class="form-label">Amount Paid (₱)</label>
                     <input type="number" step="0.01" name="amount_paid" id="amountPaidInput" class="form-control" min="0" placeholder="0.00">
                     <div class="form-text">Change: <strong class="text-success">₱<span id="changeDisplay">0.00</span></strong></div>
                 </div>
-
                 
                 <div class="mb-2" id="referenceRow" style="display:none">
                     <label class="form-label">Reference No.</label>
                     <input type="text" name="payment_reference" id="paymentReference" class="form-control" placeholder="Transaction reference">
                 </div>
-
                 <div class="form-check mb-3">
                     <input class="form-check-input" type="checkbox" name="vat_enabled" id="vatEnabled" value="1" checked>
                     <label class="form-check-label" for="vatEnabled">Apply 12% VAT</label>
                 </div>
-
                 <button type="button" id="checkoutBtn" class="btn btn-success w-100 btn-lg">
                     Checkout
                 </button>
@@ -175,6 +164,14 @@
                     <tr><td class="text-muted">VAT</td><td id="modal_vat" class="fw-semibold">—</td></tr>
                     <tr class="table-success"><td><strong>Total</strong></td><td id="modal_total" class="fw-bold fs-5">—</td></tr>
                 </table>
+
+                
+                <div id="modal_type_breakdown" class="mb-2" style="display:none">
+                    <div class="small fw-semibold text-muted mb-1">Items by Type:</div>
+                    <div id="modal_dine_in_items" class="small text-muted"></div>
+                    <div id="modal_takeout_items" class="small text-muted mt-1"></div>
+                </div>
+
                 <div id="modal_change_row" class="alert alert-info py-2 mb-0" style="display:none">
                     Amount Paid: <strong>₱<span id="modal_paid">0.00</span></strong> &nbsp;|&nbsp;
                     Change: <strong>₱<span id="modal_change">0.00</span></strong>
@@ -197,21 +194,17 @@
         </div>
     </div>
 </div>
-
 <?php $__env->stopSection(); ?>
 
 <?php $__env->startPush('scripts'); ?>
 <script>
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
 const cartItemsEl = document.getElementById('cartItems');
-const productGrid = document.getElementById('productGrid');
+const productGrid  = document.getElementById('productGrid');
 const searchResults = document.getElementById('searchResults');
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-function money(v) {
-    return '₱' + Number(v).toFixed(2);
-}
+function money(v) { return '₱' + Number(v).toFixed(2); }
 
 function showToast(msg) {
     document.getElementById('stockToastMsg').textContent = msg;
@@ -233,13 +226,10 @@ async function postJson(url, data, method = 'POST') {
 }
 
 // ── Tables ────────────────────────────────────────────────────────────────────
-
 let selectedTables = [];
-
 document.getElementById('tableGrid').addEventListener('click', e => {
     const btn = e.target.closest('.table-btn');
     if (!btn || btn.disabled) return;
-
     const num = btn.dataset.table;
     if (selectedTables.includes(num)) {
         selectedTables = selectedTables.filter(t => t !== num);
@@ -248,13 +238,11 @@ document.getElementById('tableGrid').addEventListener('click', e => {
         selectedTables.push(num);
         btn.classList.replace('btn-outline-secondary', 'btn-dark');
     }
-
     document.getElementById('selectedTablesDisplay').textContent =
         selectedTables.length ? selectedTables.map(t => 'T' + t).join(', ') : 'None';
 });
 
 // ── Category Filter ───────────────────────────────────────────────────────────
-
 document.querySelectorAll('.category-filter').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.category-filter').forEach(b => {
@@ -263,7 +251,6 @@ document.querySelectorAll('.category-filter').forEach(btn => {
         });
         btn.classList.add('btn-dark', 'active');
         btn.classList.remove('btn-outline-dark');
-
         const cat = btn.dataset.category;
         document.querySelectorAll('.product-card-wrapper').forEach(card => {
             card.style.display = (cat === 'all' || card.dataset.category == cat) ? '' : 'none';
@@ -271,8 +258,22 @@ document.querySelectorAll('.category-filter').forEach(btn => {
     });
 });
 
-// ── Cart Rendering ────────────────────────────────────────────────────────────
+// ── Auto-set Order Type from cart items ──────────────────────────────────────
+function autoSetOrderType() {
+    const items = window.lastCartPayload?.items ?? [];
+    const types = new Set(items.map(i => i.item_type ?? 'dine_in'));
+    const sel = document.getElementById('orderTypeSelect');
+    if (types.size === 0) return;
+    if (types.size > 1) {
+        sel.value = 'mixed';
+    } else if (types.has('takeout')) {
+        sel.value = 'takeout';
+    } else {
+        sel.value = 'dine_in';
+    }
+}
 
+// ── Cart Rendering ────────────────────────────────────────────────────────────
 function renderCart(payload) {
     window.lastCartPayload = payload;
     const { items, totals } = payload;
@@ -287,23 +288,39 @@ function renderCart(payload) {
         <div class="table-responsive">
             <table class="table table-sm align-middle mb-0">
                 <thead class="table-light">
-                    <tr><th>Item</th><th>Qty</th><th>Price</th><th></th></tr>
+                    <tr>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Type</th>
+                        <th></th>
+                    </tr>
                 </thead>
                 <tbody>
                     ${items.map(item => `
                         <tr>
                             <td class="small">${item.name}</td>
-                            <td style="width:90px">
+                            <td style="width:80px">
                                 <input class="form-control form-control-sm qty-input"
                                     data-id="${item.product_id}"
+                                    data-type="${item.item_type ?? 'dine_in'}"
                                     data-stock="${item.stock ?? 9999}"
                                     type="number" min="1"
                                     value="${item.quantity}">
                             </td>
                             <td class="small">${money(item.price)}</td>
+                            <td style="width:100px">
+                                <select class="form-select form-select-sm item-type-select"
+                                    data-id="${item.product_id}"
+                                    data-type="${item.item_type ?? 'dine_in'}">
+                                    <option value="dine_in" ${(item.item_type ?? 'dine_in') === 'dine_in' ? 'selected' : ''}>🍽 Dine-in</option>
+                                    <option value="takeout" ${(item.item_type ?? 'dine_in') === 'takeout' ? 'selected' : ''}>🥡 Takeout</option>
+                                </select>
+                            </td>
                             <td>
                                 <button class="btn btn-sm btn-outline-danger remove-item"
-                                    data-id="${item.product_id}">×</button>
+                                    data-id="${item.product_id}"
+                                    data-type="${item.item_type ?? 'dine_in'}">×</button>
                             </td>
                         </tr>
                     `).join('')}
@@ -317,17 +334,17 @@ function renderCart(payload) {
             <div class="d-flex justify-content-between fs-6 mt-1"><span><strong>Total</strong></span><strong id="cart_total">${money(totals.total)}</strong></div>
         </div>`;
 
+    autoSetOrderType();
     updateTotals();
 }
 
 // ── Totals ────────────────────────────────────────────────────────────────────
-
 function getCalcTotals() {
-    const payload = window.lastCartPayload || { totals: { subtotal: 0 } };
+    const payload  = window.lastCartPayload || { totals: { subtotal: 0 } };
     const subtotal = Number(payload.totals?.subtotal || 0);
     const discount = Math.max(0, Number(document.getElementById('discountInput')?.value || 0));
     const vatEnabled = document.getElementById('vatEnabled')?.checked ?? true;
-    const vat = vatEnabled ? Math.round(Math.max(0, subtotal - discount) * 0.12 * 100) / 100 : 0;
+    const vat  = vatEnabled ? Math.round(Math.max(0, subtotal - discount) * 0.12 * 100) / 100 : 0;
     const total = Math.max(0, Math.round((subtotal - discount + vat) * 100) / 100);
     return { subtotal, discount, vat, total };
 }
@@ -343,8 +360,8 @@ function updateTotals() {
 }
 
 function updateChange() {
-    const calc = getCalcTotals();
-    const paid = Number(document.getElementById('amountPaidInput')?.value || 0);
+    const calc  = getCalcTotals();
+    const paid  = Number(document.getElementById('amountPaidInput')?.value || 0);
     const change = Math.max(0, Math.round((paid - calc.total) * 100) / 100);
     const el = document.getElementById('changeDisplay');
     if (el) el.textContent = change.toFixed(2);
@@ -355,27 +372,27 @@ document.getElementById('vatEnabled').addEventListener('change', updateTotals);
 document.getElementById('amountPaidInput').addEventListener('input', updateChange);
 
 // ── Payment Method ────────────────────────────────────────────────────────────
-
 document.getElementById('paymentMethodSelect').addEventListener('change', function () {
     const isCash = this.value === 'cash';
-    document.getElementById('amountPaidRow').style.display = isCash ? '' : 'none';
-    document.getElementById('referenceRow').style.display = !isCash ? '' : 'none';
+    document.getElementById('amountPaidRow').style.display  = isCash ? '' : 'none';
+    document.getElementById('referenceRow').style.display   = !isCash ? '' : 'none';
     const refInput = document.getElementById('paymentReference');
     isCash ? refInput.removeAttribute('required') : refInput.setAttribute('required', 'required');
 });
 
 // ── Search ────────────────────────────────────────────────────────────────────
-
 function productCard(p) {
-    const fallback = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#f1f5f9"/><text x="300" y="210" text-anchor="middle" font-family="Arial" font-size="28" fill="#94a3b8">No Image</text></svg>');
+    const fallback = 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="600" height="400" fill="#f1f5f9"/><text x="300" y="210" text-anchor="middle" font-family="Arial" font-size="28" fill="#94a3b8">No Image</text></svg>'
+    );
     const outOfStock = p.stock <= 0;
-    const lowStock = p.stock > 0 && p.stock <= 5;
+    const lowStock   = p.stock > 0 && p.stock <= 5;
     return `
         <div class="col-md-4 col-xl-3">
             <button class="btn btn-light border w-100 text-start add-product-card h-100 position-relative"
                 data-id="${p.id}" data-stock="${p.stock}" ${outOfStock ? 'disabled' : ''}>
                 ${outOfStock ? '<span class="badge bg-danger position-absolute top-0 end-0 m-1">Out of Stock</span>' : ''}
-                ${lowStock ? '<span class="badge bg-warning text-dark position-absolute top-0 end-0 m-1">Low Stock</span>' : ''}
+                ${lowStock   ? '<span class="badge bg-warning text-dark position-absolute top-0 end-0 m-1">Low Stock</span>' : ''}
                 <img src="${p.image_url || fallback}" alt="${p.name}" class="w-100 rounded mb-2" style="height:140px;object-fit:cover">
                 <div class="fw-semibold text-dark text-truncate">${p.name}</div>
                 <div class="small text-muted text-truncate">${p.category?.name ?? ''}</div>
@@ -401,24 +418,25 @@ async function searchProducts() {
 document.getElementById('searchBtn').addEventListener('click', searchProducts);
 document.getElementById('resetBtn').addEventListener('click', () => {
     document.getElementById('barcodeInput').value = '';
-    document.getElementById('searchInput').value = '';
+    document.getElementById('searchInput').value  = '';
     searchResults.innerHTML = '';
     productGrid.style.display = '';
 });
 document.getElementById('barcodeInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchProducts(); }});
-document.getElementById('searchInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchProducts(); }});
+document.getElementById('searchInput').addEventListener('keydown',  e => { if (e.key === 'Enter') { e.preventDefault(); searchProducts(); }});
 
 // ── Add to Cart ───────────────────────────────────────────────────────────────
-
-async function addToCart(productId, stock) {
-    // check current qty in cart vs stock
-    const existingInput = cartItemsEl.querySelector(`.qty-input[data-id="${productId}"]`);
-    const currentQty = existingInput ? Number(existingInput.value) : 0;
-    if (currentQty >= stock) {
+async function addToCart(productId, stock, itemType = 'dine_in') {
+    // Check total qty in cart for this product across all types
+    const items = window.lastCartPayload?.items ?? [];
+    const totalInCart = items
+        .filter(i => String(i.product_id) === String(productId))
+        .reduce((sum, i) => sum + i.quantity, 0);
+    if (totalInCart >= stock) {
         showToast(`Only ${stock} in stock — cannot add more.`);
         return;
     }
-    const payload = await postJson(`<?php echo e(route('pos.cart.add')); ?>`, { product_id: productId, quantity: 1 });
+    const payload = await postJson(`<?php echo e(route('pos.cart.add')); ?>`, { product_id: productId, quantity: 1, item_type: itemType });
     renderCart(payload);
 }
 
@@ -437,59 +455,95 @@ function bindSearchResultButtons() {
 }
 
 // ── Cart Events ───────────────────────────────────────────────────────────────
-
 cartItemsEl.addEventListener('change', async e => {
-    if (!e.target.classList.contains('qty-input')) return;
-    const stock = Number(e.target.dataset.stock);
-    const qty = Number(e.target.value);
-    if (qty > stock) {
-        showToast(`Only ${stock} available in stock.`);
-        e.target.value = stock;
-        return;
+    // Qty change
+    if (e.target.classList.contains('qty-input')) {
+        const stock = Number(e.target.dataset.stock);
+        const qty   = Number(e.target.value);
+        if (qty > stock) {
+            showToast(`Only ${stock} available in stock.`);
+            e.target.value = stock;
+            return;
+        }
+        const payload = await postJson(`<?php echo e(route('pos.cart.update')); ?>`, {
+            product_id: e.target.dataset.id,
+            item_type:  e.target.dataset.type,
+            quantity:   qty
+        }, 'PATCH');
+        renderCart(payload);
     }
-    const payload = await postJson(`<?php echo e(route('pos.cart.update')); ?>`, {
-        product_id: e.target.dataset.id,
-        quantity: qty
-    }, 'PATCH');
-    renderCart(payload);
+
+    // Item type change — sends new_item_type; backend merges rows if needed
+    if (e.target.classList.contains('item-type-select')) {
+        const newType = e.target.value;
+        const oldType = e.target.dataset.type;
+        if (newType === oldType) return;
+        // Find quantity of this row from payload
+        const items   = window.lastCartPayload?.items ?? [];
+        const rowItem = items.find(i => String(i.product_id) === e.target.dataset.id && i.item_type === oldType);
+        const payload = await postJson(`<?php echo e(route('pos.cart.update')); ?>`, {
+            product_id:    e.target.dataset.id,
+            item_type:     oldType,
+            new_item_type: newType,
+            quantity:      rowItem?.quantity ?? 1
+        }, 'PATCH');
+        renderCart(payload);
+    }
 });
 
 cartItemsEl.addEventListener('click', async e => {
     if (!e.target.classList.contains('remove-item')) return;
     e.preventDefault();
     const payload = await postJson(`<?php echo e(route('pos.cart.remove')); ?>`, {
-        product_id: e.target.dataset.id
+        product_id: e.target.dataset.id,
+        item_type:  e.target.dataset.type
     }, 'DELETE');
     renderCart(payload);
 });
 
 // ── Checkout Modal ────────────────────────────────────────────────────────────
-
 document.getElementById('checkoutBtn').addEventListener('click', () => {
-    const calc = getCalcTotals();
-    const method = document.getElementById('paymentMethodSelect').value;
-    const paid = Number(document.getElementById('amountPaidInput')?.value || 0);
-    const change = Math.max(0, Math.round((paid - calc.total) * 100) / 100);
-    const orderType = document.querySelector('select[name="order_type"]').value;
+    const calc     = getCalcTotals();
+    const method   = document.getElementById('paymentMethodSelect').value;
+    const paid     = Number(document.getElementById('amountPaidInput')?.value || 0);
+    const change   = Math.max(0, Math.round((paid - calc.total) * 100) / 100);
+    const orderType = document.getElementById('orderTypeSelect').value;
 
-    // Populate modal
+    // Populate modal summary
     document.getElementById('modal_customer').textContent =
         document.getElementById('customerName').value || '—';
     document.getElementById('modal_tables').textContent =
         selectedTables.length ? selectedTables.map(t => 'T' + t).join(', ') : '—';
     document.getElementById('modal_type').textContent =
-        orderType.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+        orderType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     document.getElementById('modal_payment').textContent =
-        method.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+        method.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     document.getElementById('modal_subtotal').textContent = money(calc.subtotal);
     document.getElementById('modal_discount').textContent = money(calc.discount);
-    document.getElementById('modal_vat').textContent = money(calc.vat);
-    document.getElementById('modal_total').textContent = money(calc.total);
+    document.getElementById('modal_vat').textContent      = money(calc.vat);
+    document.getElementById('modal_total').textContent    = money(calc.total);
 
+    // Mixed order breakdown
+    const breakdown  = document.getElementById('modal_type_breakdown');
+    const items      = window.lastCartPayload?.items ?? [];
+    const dineItems  = items.filter(i => (itemTypes[i.product_id] ?? 'dine_in') === 'dine_in');
+    const takeItems  = items.filter(i => (itemTypes[i.product_id] ?? 'dine_in') === 'takeout');
+
+    if (orderType === 'mixed' && dineItems.length && takeItems.length) {
+        breakdown.style.display = '';
+        document.getElementById('modal_dine_in_items').innerHTML =
+            `<strong>🍽 Dine-in:</strong> ${dineItems.map(i => i.name + ' ×' + i.quantity).join(', ')}`;
+        document.getElementById('modal_takeout_items').innerHTML =
+            `<strong>🥡 Takeout:</strong> ${takeItems.map(i => i.name + ' ×' + i.quantity).join(', ')}`;
+    } else {
+        breakdown.style.display = 'none';
+    }
+
+    // Cash change row
     const changeRow = document.getElementById('modal_change_row');
     if (method === 'cash') {
         changeRow.style.display = '';
-        document.getElementById('modal_paid').textContent = paid.toFixed(2);
+        document.getElementById('modal_paid').textContent   = paid.toFixed(2);
         document.getElementById('modal_change').textContent = change.toFixed(2);
     } else {
         changeRow.style.display = 'none';
@@ -499,27 +553,55 @@ document.getElementById('checkoutBtn').addEventListener('click', () => {
 });
 
 document.getElementById('confirmCheckoutBtn').addEventListener('click', async () => {
-    const formData = new FormData(document.getElementById('checkoutForm'));
-    const payload = Object.fromEntries(formData.entries());
-    payload.vat_enabled = formData.get('vat_enabled') ? 1 : 0;
-    payload.customer_name = document.getElementById('customerName').value;
-    payload.tables = selectedTables;
+    const btn = document.getElementById('confirmCheckoutBtn');
+    btn.disabled = true;
+    btn.textContent = 'Processing…';
 
-    const res = await fetch(`<?php echo e(route('pos.checkout')); ?>`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrf,
-            'Accept': 'text/html,application/xhtml+xml'
-        },
-        body: JSON.stringify(payload)
-    });
+    try {
+        const formData = new FormData(document.getElementById('checkoutForm'));
+        const payload  = Object.fromEntries(formData.entries());
+        payload.vat_enabled   = formData.get('vat_enabled') ? 1 : 0;
+        payload.customer_name = document.getElementById('customerName').value;
+        payload.tables        = selectedTables;
+        payload.item_types    = itemTypes;   // ← sends { product_id: 'dine_in'|'takeout' }
 
-    bootstrap.Modal.getInstance(document.getElementById('checkoutModal')).hide();
+        const res = await fetch(`<?php echo e(route('pos.checkout')); ?>`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrf,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
 
-    if (res.redirected) {
-        window.location.href = res.url;
-    } else {
+        const data = await res.json();
+
+        bootstrap.Modal.getInstance(document.getElementById('checkoutModal')).hide();
+
+        if (res.ok && data.success && data.redirect_url) {
+            // Clear cart UI immediately before navigation
+            cartItemsEl.innerHTML = '<div class="text-muted small py-2">Cart is empty.</div>';
+            window.lastCartPayload = null;
+            window.location.href = data.redirect_url;
+        } else {
+            // Show validation errors
+            const msg = data.message || (data.errors ? Object.values(data.errors).flat().join('\n') : 'Checkout failed. Please try again.');
+            alert(msg);
+            btn.disabled = false;
+            btn.textContent = 'Confirm & Place Order';
+        }
+    } catch (err) {
+        bootstrap.Modal.getInstance(document.getElementById('checkoutModal')).hide();
+        alert('An error occurred during checkout. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Confirm & Place Order';
+    }
+});
+
+// ── BFCache Fix ───────────────────────────────────────────────────────────────
+window.addEventListener('pageshow', function (event) {
+    if (event.persisted) {
         window.location.reload();
     }
 });

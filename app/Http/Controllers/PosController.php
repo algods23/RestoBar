@@ -67,24 +67,33 @@ class PosController extends Controller
         $validated = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
             'quantity'   => ['nullable', 'integer', 'min:1'],
+            'item_type'  => ['nullable', 'in:dine_in,takeout'],
         ]);
 
         $product  = Product::findOrFail($validated['product_id']);
         $quantity = $validated['quantity'] ?? 1;
+        $itemType = $validated['item_type'] ?? 'dine_in';
+        $cartKey  = "{$product->id}_{$itemType}";
         $cart     = $this->cart();
 
-        if (($cart[$product->id]['quantity'] ?? 0) + $quantity > $product->stock) {
+        // Stock check across ALL rows for this product
+        $totalQty = collect($cart)
+            ->filter(fn($i) => $i['product_id'] == $product->id)
+            ->sum('quantity');
+
+        if ($totalQty + $quantity > $product->stock) {
             throw ValidationException::withMessages([
                 'quantity' => 'Not enough stock available.',
             ]);
         }
 
-        $cart[$product->id] = [
+        $cart[$cartKey] = [
             'product_id' => $product->id,
+            'item_type'  => $itemType,
             'name'       => $product->name,
             'barcode'    => $product->barcode,
             'price'      => (float) $product->price,
-            'quantity'   => ($cart[$product->id]['quantity'] ?? 0) + $quantity,
+            'quantity'   => ($cart[$cartKey]['quantity'] ?? 0) + $quantity,
             'stock'      => (int) $product->stock,
         ];
 
@@ -96,30 +105,50 @@ class PosController extends Controller
     public function updateCartItem(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'product_id' => ['required', 'exists:products,id'],
-            'quantity'   => ['required', 'integer', 'min:0'],
+            'product_id'    => ['required', 'exists:products,id'],
+            'item_type'     => ['nullable', 'in:dine_in,takeout'],
+            'new_item_type' => ['nullable', 'in:dine_in,takeout'],
+            'quantity'      => ['required', 'integer', 'min:0'],
         ]);
 
-        $cart    = $this->cart();
-        $product = Product::findOrFail($validated['product_id']);
+        $cart        = $this->cart();
+        $product     = Product::findOrFail($validated['product_id']);
+        $itemType    = $validated['item_type'] ?? 'dine_in';
+        $newItemType = $validated['new_item_type'] ?? $itemType;
+        $cartKey     = "{$product->id}_{$itemType}";
+        $newCartKey  = "{$product->id}_{$newItemType}";
 
-        if (! isset($cart[$product->id])) {
+        if (! isset($cart[$cartKey])) {
             return response()->json($this->cartPayload());
         }
 
-        if ($validated['quantity'] === 0) {
-            unset($cart[$product->id]);
-        } else {
-            if ($validated['quantity'] > $product->stock) {
-                throw ValidationException::withMessages([
-                    'quantity' => 'Requested quantity exceeds stock.',
-                ]);
+        // Type change: merge old row into new type row
+        if ($newCartKey !== $cartKey) {
+            $mergedQty = ($cart[$newCartKey]['quantity'] ?? 0) + $cart[$cartKey]['quantity'];
+            $otherQty  = collect($cart)
+                ->filter(fn($i, $k) => $i['product_id'] == $product->id && $k !== $cartKey && $k !== $newCartKey)
+                ->sum('quantity');
+            if ($otherQty + $mergedQty > $product->stock) {
+                throw ValidationException::withMessages(['quantity' => 'Not enough stock available.']);
             }
-            $cart[$product->id]['quantity'] = $validated['quantity'];
+            $cart[$newCartKey] = array_merge($cart[$cartKey], [
+                'item_type' => $newItemType,
+                'quantity'  => $mergedQty,
+            ]);
+            unset($cart[$cartKey]);
+        } elseif ($validated['quantity'] === 0) {
+            unset($cart[$cartKey]);
+        } else {
+            $otherQty = collect($cart)
+                ->filter(fn($i, $k) => $i['product_id'] == $product->id && $k !== $cartKey)
+                ->sum('quantity');
+            if ($otherQty + $validated['quantity'] > $product->stock) {
+                throw ValidationException::withMessages(['quantity' => 'Requested quantity exceeds stock.']);
+            }
+            $cart[$cartKey]['quantity'] = $validated['quantity'];
         }
 
         $this->storeCart($cart);
-
         return response()->json($this->cartPayload());
     }
 
@@ -127,19 +156,22 @@ class PosController extends Controller
     {
         $validated = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
+            'item_type'  => ['nullable', 'in:dine_in,takeout'],
         ]);
 
-        $cart = $this->cart();
-        unset($cart[$validated['product_id']]);
+        $itemType = $validated['item_type'] ?? 'dine_in';
+        $cartKey  = "{$validated['product_id']}_{$itemType}";
+        $cart     = $this->cart();
+        unset($cart[$cartKey]);
         $this->storeCart($cart);
 
         return response()->json($this->cartPayload());
     }
 
-    public function checkout(Request $request): RedirectResponse
+    public function checkout(Request $request): \Illuminate\Http\JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
-            'order_type'        => ['required', 'in:dine_in,takeout,delivery'],
+            'order_type'        => ['required', 'in:dine_in,takeout,mixed,delivery'],
             'discount_amount'   => ['nullable', 'numeric', 'min:0'],
             'vat_enabled'       => ['nullable', 'boolean'],
             'payment_method'    => ['required', 'in:cash,card,gcash,bank_transfer'],
@@ -201,6 +233,7 @@ class PosController extends Controller
                     'quantity'   => $cartItem['quantity'],
                     'price'      => $cartItem['price'],
                     'subtotal'   => $lineSubtotal,
+                    'item_type'  => $cartItem['item_type'] ?? 'dine_in',
                 ]);
 
                 $previousStock = $product->stock;
@@ -253,6 +286,14 @@ class PosController extends Controller
         }
 
         $request->session()->forget('pos_cart');
+
+        // If the request expects JSON (AJAX checkout), return the receipt URL
+        if ($request->expectsJson() || $request->wantsJson() || $request->header('Accept') === 'application/json') {
+            return response()->json([
+                'success'     => true,
+                'redirect_url' => route('orders.receipt', $order),
+            ]);
+        }
 
         return redirect()->route('orders.receipt', $order)
             ->with('success', 'Transaction recorded.');
