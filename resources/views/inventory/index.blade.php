@@ -8,8 +8,13 @@
             <form method="POST" action="{{ route('inventory.store') }}">
                 @csrf
                 <div class="mb-2">
-                    <label class="form-label">Product ID</label>
-                    <input name="product_id" type="number" class="form-control" required>
+                    <label class="form-label">Product</label>
+                    <select name="product_id" class="form-select" required>
+                        <option value="">Select a product...</option>
+                        @foreach($products as $product)
+                            <option value="{{ $product->id }}">{{ $product->name }} (Stock: {{ $product->stock }})</option>
+                        @endforeach
+                    </select>
                 </div>
                 <div class="mb-2">
                     <label class="form-label">Type</label>

@@ -8,8 +8,13 @@
             <form method="POST" action="<?php echo e(route('inventory.store')); ?>">
                 <?php echo csrf_field(); ?>
                 <div class="mb-2">
-                    <label class="form-label">Product ID</label>
-                    <input name="product_id" type="number" class="form-control" required>
+                    <label class="form-label">Product</label>
+                    <select name="product_id" class="form-select" required>
+                        <option value="">Select a product...</option>
+                        <?php $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <option value="<?php echo e($product->id); ?>"><?php echo e($product->name); ?> (Stock: <?php echo e($product->stock); ?>)</option>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    </select>
                 </div>
                 <div class="mb-2">
                     <label class="form-label">Type</label>
