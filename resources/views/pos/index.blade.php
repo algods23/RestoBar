@@ -584,6 +584,9 @@ document.getElementById('confirmCheckoutBtn').addEventListener('click', async ()
             // Clear cart UI immediately before navigation
             cartItemsEl.innerHTML = '<div class="text-muted small py-2">Cart is empty.</div>';
             window.lastCartPayload = null;
+            if (data.kitchen_receipt_url) {
+                window.open(data.kitchen_receipt_url, 'kitchen_receipt', 'width=400,height=600');
+            }
             window.location.href = data.redirect_url;
         } else {
             // Show validation errors

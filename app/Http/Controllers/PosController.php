@@ -290,8 +290,9 @@ class PosController extends Controller
         // If the request expects JSON (AJAX checkout), return the receipt URL
         if ($request->expectsJson() || $request->wantsJson() || $request->header('Accept') === 'application/json') {
             return response()->json([
-                'success'     => true,
-                'redirect_url' => route('orders.receipt', $order),
+                'success'             => true,
+                'redirect_url'        => route('orders.receipt', $order),
+                'kitchen_receipt_url' => route('orders.kitchen_receipt', $order),
             ]);
         }
 
@@ -304,6 +305,13 @@ class PosController extends Controller
         $order->load('items.product', 'user', 'tables');
 
         return view('pos.receipt', compact('order'));
+    }
+
+    public function kitchenReceipt(Order $order): View
+    {
+        $order->load('items.product', 'tables');
+
+        return view('pos.kitchen_receipt', compact('order'));
     }
 
     private function cart(): array

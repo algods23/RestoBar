@@ -101,7 +101,9 @@
 </style>
 
 @php
-    $isMixed   = $order->order_type === 'mixed';
+    $hasDineIn = $order->items->contains(fn($i) => ($i->item_type ?? 'dine_in') === 'dine_in');
+    $hasTakeout = $order->items->contains(fn($i) => ($i->item_type ?? 'dine_in') === 'takeout');
+    $isMixed   = $hasDineIn && $hasTakeout;
     $dineItems = $order->items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'dine_in');
     $takeItems = $order->items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'takeout');
 @endphp
@@ -189,7 +191,12 @@
             <tbody>
                 @foreach($order->items as $item)
                     <tr>
-                        <td>{{ $item->product?->name ?? 'N/A' }}</td>
+                        <td>
+                            {{ $item->product?->name ?? 'N/A' }}
+                            @if($item->item_type && $item->item_type !== $order->order_type)
+                                <span style="font-size: 8px;">({{ $item->item_type === 'dine_in' ? 'Dine-in' : 'Takeout' }})</span>
+                            @endif
+                        </td>
                         <td style="text-align:center;">{{ $item->quantity }}</td>
                         <td style="text-align:right;">{{ number_format($item->price, 2) }}</td>
                         <td style="text-align:right;">{{ number_format($item->subtotal, 2) }}</td>

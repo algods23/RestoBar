@@ -101,7 +101,9 @@
 </style>
 
 <?php
-    $isMixed   = $order->order_type === 'mixed';
+    $hasDineIn = $order->items->contains(fn($i) => ($i->item_type ?? 'dine_in') === 'dine_in');
+    $hasTakeout = $order->items->contains(fn($i) => ($i->item_type ?? 'dine_in') === 'takeout');
+    $isMixed   = $hasDineIn && $hasTakeout;
     $dineItems = $order->items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'dine_in');
     $takeItems = $order->items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'takeout');
 ?>
@@ -192,7 +194,13 @@
             <tbody>
                 <?php $__currentLoopData = $order->items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                     <tr>
-                        <td><?php echo e($item->product?->name ?? 'N/A'); ?></td>
+                        <td>
+                            <?php echo e($item->product?->name ?? 'N/A'); ?>
+
+                            <?php if($item->item_type && $item->item_type !== $order->order_type): ?>
+                                <span style="font-size: 8px;">(<?php echo e($item->item_type === 'dine_in' ? 'Dine-in' : 'Takeout'); ?>)</span>
+                            <?php endif; ?>
+                        </td>
                         <td style="text-align:center;"><?php echo e($item->quantity); ?></td>
                         <td style="text-align:right;"><?php echo e(number_format($item->price, 2)); ?></td>
                         <td style="text-align:right;"><?php echo e(number_format($item->subtotal, 2)); ?></td>
