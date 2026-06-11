@@ -186,7 +186,10 @@
         }
     }
 </style>
-
+{{-- PRINT BUTTON + BACK BUTTON --}}
+<div class="no-print">
+    <button class="print-btn" style="background:#444; margin-top:8px;" onclick="history.back()">← Back</button>
+</div>
 <div class="receipt">
 
     {{-- HEADER --}}
