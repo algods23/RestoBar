@@ -22,18 +22,60 @@
     </div>
 
     <table class="table">
-        <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr></thead>
+        <thead><tr><th>Item</th><th>Type</th><th>Qty</th><th>Price</th><th>Subtotal</th>@if($order->status === 'pending')<th></th>@endif</tr></thead>
         <tbody>
             @foreach ($order->items as $item)
                 <tr>
                     <td>{{ $item->product?->name }}</td>
+                    <td>{{ $item->item_type === 'dine_in' ? '🍽 Dine-in' : '🥡 Takeout' }}</td>
                     <td>{{ $item->quantity }}</td>
                     <td>₱{{ number_format($item->price, 2) }}</td>
                     <td>₱{{ number_format($item->subtotal, 2) }}</td>
+                    @if($order->status === 'pending')
+                    <td class="text-end">
+                        <form action="{{ route('orders.items.remove', [$order, $item]) }}" method="POST" class="d-inline" onsubmit="return confirm('Remove this item? Stock will be restored.');">
+                            @csrf
+                            @method('DELETE')
+                            <button class="btn btn-sm btn-outline-danger">Remove</button>
+                        </form>
+                    </td>
+                    @endif
                 </tr>
             @endforeach
         </tbody>
     </table>
+
+    @if($order->status === 'pending')
+    <div class="card bg-light p-3 mb-4 border-0">
+        <h6 class="mb-2">Add Item to Order</h6>
+        <form action="{{ route('orders.items.add', $order) }}" method="POST" class="row g-2 align-items-end">
+            @csrf
+            <div class="col-md-5">
+                <label class="form-label small">Product</label>
+                <select name="product_id" class="form-select form-select-sm" required>
+                    <option value="">Select a product...</option>
+                    @foreach($products as $product)
+                        <option value="{{ $product->id }}">{{ $product->name }} (₱{{ $product->price }} | Stock: {{ $product->stock }})</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small">Type</label>
+                <select name="item_type" class="form-select form-select-sm" required>
+                    <option value="dine_in">Dine-in</option>
+                    <option value="takeout">Takeout</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Quantity</label>
+                <input type="number" name="quantity" class="form-control form-control-sm" min="1" value="1" required>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-sm btn-dark w-100">Add Item</button>
+            </div>
+        </form>
+    </div>
+    @endif
 
     <div class="ms-auto" style="max-width: 320px;">
         <div class="d-flex justify-content-between"><span>Subtotal</span><strong>₱{{ number_format($order->subtotal, 2) }}</strong></div>

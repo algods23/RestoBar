@@ -4,11 +4,13 @@
 <h1 class="h4 mb-3">Orders</h1>
 <div class="card p-3">
     <table class="table align-middle">
-        <thead><tr><th>ID</th><th>Type</th><th>Status</th><th>Total</th><th>Date</th><th></th></tr></thead>
+        <thead><tr><th>ID</th><th>Customer</th><th>Table</th><th>Type</th><th>Status</th><th>Total</th><th>Date</th><th></th></tr></thead>
         <tbody>
             <?php $__currentLoopData = $orders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $order): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <tr>
                     <td>#<?php echo e($order->id); ?></td>
+                    <td><?php echo e($order->customer_name ?: '—'); ?></td>
+                    <td><?php echo e($order->tables->count() ? $order->tables->pluck('number')->map(fn($t) => 'T'.$t)->join(', ') : '—'); ?></td>
                     <td><?php echo e(str_replace('_', ' ', ucfirst($order->order_type))); ?></td>
                     <td><?php echo e(ucfirst($order->status)); ?></td>
                     <td>₱<?php echo e(number_format($order->total_amount, 2)); ?></td>

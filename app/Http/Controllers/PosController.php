@@ -301,7 +301,7 @@ class PosController extends Controller
 
     public function receipt(Order $order): View
     {
-        $order->load('items.product', 'user');
+        $order->load('items.product', 'user', 'tables');
 
         return view('pos.receipt', compact('order'));
     }

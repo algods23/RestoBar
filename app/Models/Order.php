@@ -22,6 +22,7 @@ class Order extends Model
         'total_amount',
         'status',
         'payment_method',
+        'customer_name',
         'notes',
     ];
 
@@ -45,5 +46,10 @@ class Order extends Model
     public function payments()
     {
         return $this->hasMany(\App\Models\Payment::class);
+    }
+
+    public function tables()
+    {
+        return $this->hasMany(\App\Models\Table::class, 'current_order_id');
     }
 }

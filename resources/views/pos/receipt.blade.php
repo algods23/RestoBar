@@ -126,8 +126,8 @@
         @if($order->customer_name)
             <div>Customer: <strong>{{ $order->customer_name }}</strong></div>
         @endif
-        @if($order->tables && count($order->tables))
-            <div>Table(s): <strong>{{ implode(', ', array_map(fn($t) => 'T'.$t, $order->tables)) }}</strong></div>
+        @if($order->tables && $order->tables->count())
+            <div>Table(s): <strong>{{ $order->tables->pluck('number')->map(fn($t) => 'T'.$t)->join(', ') }}</strong></div>
         @endif
     </div>
 

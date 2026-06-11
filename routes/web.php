@@ -36,7 +36,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
     Route::post('/orders/{order}/pay', [OrderController::class, 'pay'])->name('orders.pay');
     Route::patch('/orders/{order}', [OrderController::class, 'update'])->name('orders.update');
-
+    Route::post('/orders/{order}/items', [OrderController::class, 'addItem'])->name('orders.items.add');
+    Route::delete('/orders/{order}/items/{item}', [OrderController::class, 'removeItem'])->name('orders.items.remove');
     Route::middleware('role:admin')->group(function () {
         Route::resource('categories', CategoryController::class)->except(['show']);
         Route::resource('products', ProductController::class)->except(['show']);
