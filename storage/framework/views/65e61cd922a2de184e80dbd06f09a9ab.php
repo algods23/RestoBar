@@ -26,7 +26,7 @@
             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </tbody>
     </table>
-    <?php echo e($categories->links()); ?>
+    <?php echo e($categories->links('pagination.default')); ?>
 
 </div>
 <?php $__env->stopSection(); ?>

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -22,10 +23,16 @@ class PosController extends Controller
             ->where('status', 'available')
             ->orderBy('name')
             ->get();
+        $categories = Category::whereHas('products', function ($query) {
+                $query->where('status', 'available');
+            })
+            ->orderBy('name')
+            ->get();
 
         return view('pos.index', [
             'cart' => $cart,
             'products' => $products,
+            'categories' => $categories,
             'totals' => $this->totals($cart),
         ]);
     }
@@ -33,12 +40,18 @@ class PosController extends Controller
     public function searchProducts(Request $request): JsonResponse
     {
         $query = $request->string('query')->toString();
+        $categoryId = $request->integer('category_id');
 
         $products = Product::with('category')
             ->where('status', 'available')
-            ->where(function ($builder) use ($query) {
-                $builder->where('name', 'like', "%{$query}%")
-                    ->orWhere('barcode', 'like', "%{$query}%");
+            ->when($query !== '', function ($builder) use ($query) {
+                $builder->where(function ($builder) use ($query) {
+                    $builder->where('name', 'like', "%{$query}%")
+                        ->orWhere('barcode', 'like', "%{$query}%");
+                });
+            })
+            ->when($categoryId > 0, function ($builder) use ($categoryId) {
+                $builder->where('category_id', $categoryId);
             })
             ->orderBy('name')
             ->get();
