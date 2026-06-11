@@ -59,7 +59,7 @@
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                 </tbody>
             </table>
-            <?php echo e($logs->links()); ?>
+            <?php echo e($logs->links('pagination.default')); ?>
 
         </div>
     </div>
