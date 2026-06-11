@@ -203,6 +203,9 @@ const cartItemsEl = document.getElementById('cartItems');
 const productGrid  = document.getElementById('productGrid');
 const searchResults = document.getElementById('searchResults');
 
+// Seed lastCartPayload from server-rendered cart so checkout modal works on fresh load
+window.lastCartPayload = <?php echo json_encode(['items' => array_values($cart), 'totals' => $totals], 512) ?>;
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function money(v) { return '₱' + Number(v).toFixed(2); }
 
@@ -523,11 +526,11 @@ document.getElementById('checkoutBtn').addEventListener('click', () => {
     document.getElementById('modal_vat').textContent      = money(calc.vat);
     document.getElementById('modal_total').textContent    = money(calc.total);
 
-    // Mixed order breakdown
+    // Mixed order breakdown — use item_type stored server-side in each cart item
     const breakdown  = document.getElementById('modal_type_breakdown');
     const items      = window.lastCartPayload?.items ?? [];
-    const dineItems  = items.filter(i => (itemTypes[i.product_id] ?? 'dine_in') === 'dine_in');
-    const takeItems  = items.filter(i => (itemTypes[i.product_id] ?? 'dine_in') === 'takeout');
+    const dineItems  = items.filter(i => (i.item_type ?? 'dine_in') === 'dine_in');
+    const takeItems  = items.filter(i => (i.item_type ?? 'dine_in') === 'takeout');
 
     if (orderType === 'mixed' && dineItems.length && takeItems.length) {
         breakdown.style.display = '';
@@ -563,7 +566,7 @@ document.getElementById('confirmCheckoutBtn').addEventListener('click', async ()
         payload.vat_enabled   = formData.get('vat_enabled') ? 1 : 0;
         payload.customer_name = document.getElementById('customerName').value;
         payload.tables        = selectedTables;
-        payload.item_types    = itemTypes;   // ← sends { product_id: 'dine_in'|'takeout' }
+
 
         const res = await fetch(`<?php echo e(route('pos.checkout')); ?>`, {
             method: 'POST',
