@@ -73,10 +73,6 @@
                     <input type="number" step="0.01" name="amount_paid" id="pos_amount_paid" class="form-control" min="0">
                     <div class="form-text small text-muted">Change: <span id="pos_change">0.00</span></div>
                 </div>
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="checkbox" name="pay_now" id="payNow">
-                    <label class="form-check-label" for="payNow">Pay now (record payment)</label>
-                </div>
                 <div class="mb-2" id="pos_reference_row" style="display:none">
                     <label class="form-label">Reference</label>
                     <input type="text" name="payment_reference" id="pos_payment_reference" class="form-control">
