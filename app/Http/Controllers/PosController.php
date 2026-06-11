@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Table;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,12 +29,14 @@ class PosController extends Controller
             })
             ->orderBy('name')
             ->get();
+        $tables = Table::orderBy('number')->get();
 
         return view('pos.index', [
-            'cart' => $cart,
-            'products' => $products,
+            'cart'       => $cart,
+            'products'   => $products,
             'categories' => $categories,
-            'totals' => $this->totals($cart),
+            'tables'     => $tables,
+            'totals'     => $this->totals($cart),
         ]);
     }
 
@@ -63,12 +66,12 @@ class PosController extends Controller
     {
         $validated = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
-            'quantity' => ['nullable', 'integer', 'min:1'],
+            'quantity'   => ['nullable', 'integer', 'min:1'],
         ]);
 
-        $product = Product::findOrFail($validated['product_id']);
+        $product  = Product::findOrFail($validated['product_id']);
         $quantity = $validated['quantity'] ?? 1;
-        $cart = $this->cart();
+        $cart     = $this->cart();
 
         if (($cart[$product->id]['quantity'] ?? 0) + $quantity > $product->stock) {
             throw ValidationException::withMessages([
@@ -78,11 +81,11 @@ class PosController extends Controller
 
         $cart[$product->id] = [
             'product_id' => $product->id,
-            'name' => $product->name,
-            'barcode' => $product->barcode,
-            'price' => (float) $product->price,
-            'quantity' => ($cart[$product->id]['quantity'] ?? 0) + $quantity,
-            'stock' => (int) $product->stock,
+            'name'       => $product->name,
+            'barcode'    => $product->barcode,
+            'price'      => (float) $product->price,
+            'quantity'   => ($cart[$product->id]['quantity'] ?? 0) + $quantity,
+            'stock'      => (int) $product->stock,
         ];
 
         $this->storeCart($cart);
@@ -94,10 +97,10 @@ class PosController extends Controller
     {
         $validated = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
-            'quantity' => ['required', 'integer', 'min:0'],
+            'quantity'   => ['required', 'integer', 'min:0'],
         ]);
 
-        $cart = $this->cart();
+        $cart    = $this->cart();
         $product = Product::findOrFail($validated['product_id']);
 
         if (! isset($cart[$product->id])) {
@@ -112,7 +115,6 @@ class PosController extends Controller
                     'quantity' => 'Requested quantity exceeds stock.',
                 ]);
             }
-
             $cart[$product->id]['quantity'] = $validated['quantity'];
         }
 
@@ -137,14 +139,17 @@ class PosController extends Controller
     public function checkout(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'order_type' => ['required', 'in:dine_in,takeout,delivery'],
-            'discount_amount' => ['nullable', 'numeric', 'min:0'],
-            'vat_enabled' => ['nullable', 'boolean'],
-            'payment_method' => ['required', 'in:cash,card,gcash,bank_transfer'],
-            'pay_now' => ['nullable', 'boolean'],
+            'order_type'        => ['required', 'in:dine_in,takeout,delivery'],
+            'discount_amount'   => ['nullable', 'numeric', 'min:0'],
+            'vat_enabled'       => ['nullable', 'boolean'],
+            'payment_method'    => ['required', 'in:cash,card,gcash,bank_transfer'],
+            'pay_now'           => ['nullable', 'boolean'],
             'payment_reference' => ['nullable', 'string', 'max:100'],
-            'amount_paid' => ['nullable', 'numeric', 'min:0'],
-            'notes' => ['nullable', 'string', 'max:255'],
+            'amount_paid'       => ['nullable', 'numeric', 'min:0'],
+            'notes'             => ['nullable', 'string', 'max:255'],
+            'customer_name'     => ['nullable', 'string', 'max:100'],
+            'tables'            => ['nullable', 'array'],
+            'tables.*'          => ['integer'],
         ]);
 
         $cart = $this->cart();
@@ -153,21 +158,31 @@ class PosController extends Controller
             return back()->withErrors(['cart' => 'Cart is empty.']);
         }
 
-        $totals = $this->totals($cart, (float) ($validated['discount_amount'] ?? 0), $request->boolean('vat_enabled'));
+        $totals = $this->totals(
+            $cart,
+            (float) ($validated['discount_amount'] ?? 0),
+            $request->boolean('vat_enabled')
+        );
 
         $order = DB::transaction(function () use ($validated, $cart, $totals, $request) {
             $order = Order::create([
-                'user_id' => $request->user()->id,
-                'order_type' => $validated['order_type'],
-                'subtotal' => $totals['subtotal'],
+                'user_id'         => $request->user()->id,
+                'order_type'      => $validated['order_type'],
+                'subtotal'        => $totals['subtotal'],
                 'discount_amount' => $totals['discount_amount'],
-                'vat_amount' => $totals['vat_amount'],
-                'total_amount' => $totals['total'],
-                // Create orders as pending by default; may be completed if paid now
-                'status' => Order::STATUS_PENDING,
-                'payment_method' => $validated['payment_method'],
-                'notes' => $validated['notes'] ?? null,
+                'vat_amount'      => $totals['vat_amount'],
+                'total_amount'    => $totals['total'],
+                'status'          => Order::STATUS_PENDING,
+                'payment_method'  => $validated['payment_method'],
+                'customer_name'   => $validated['customer_name'] ?? null,
+                'notes'           => $validated['notes'] ?? null,
             ]);
+
+            // Mark selected tables as occupied
+            if (!empty($validated['tables'])) {
+                Table::whereIn('number', $validated['tables'])
+                    ->update(['is_occupied' => true, 'current_order_id' => $order->id]);
+            }
 
             foreach ($cart as $cartItem) {
                 $product = Product::lockForUpdate()->findOrFail($cartItem['product_id']);
@@ -181,11 +196,11 @@ class PosController extends Controller
                 $lineSubtotal = $cartItem['price'] * $cartItem['quantity'];
 
                 OrderItem::create([
-                    'order_id' => $order->id,
+                    'order_id'   => $order->id,
                     'product_id' => $product->id,
-                    'quantity' => $cartItem['quantity'],
-                    'price' => $cartItem['price'],
-                    'subtotal' => $lineSubtotal,
+                    'quantity'   => $cartItem['quantity'],
+                    'price'      => $cartItem['price'],
+                    'subtotal'   => $lineSubtotal,
                 ]);
 
                 $previousStock = $product->stock;
@@ -197,30 +212,29 @@ class PosController extends Controller
                 }
 
                 Inventory::create([
-                    'product_id' => $product->id,
-                    'user_id' => $request->user()->id,
-                    'order_id' => $order->id,
-                    'type' => 'deduction',
-                    'quantity' => $cartItem['quantity'],
+                    'product_id'     => $product->id,
+                    'user_id'        => $request->user()->id,
+                    'order_id'       => $order->id,
+                    'type'           => 'deduction',
+                    'quantity'       => $cartItem['quantity'],
                     'previous_stock' => $previousStock,
-                    'new_stock' => $product->stock,
-                    'notes' => 'POS checkout',
+                    'new_stock'      => $product->stock,
+                    'notes'          => 'POS checkout',
                 ]);
             }
 
             return $order;
         });
 
-        // If cashier chose to pay now, validate reference for non-cash and record payment
         if ($request->boolean('pay_now')) {
             if ($validated['payment_method'] !== 'cash' && empty($validated['payment_reference'])) {
                 throw ValidationException::withMessages([
-                    'payment_reference' => 'Reference is required for non-cash immediate payments.',
+                    'payment_reference' => 'Reference is required for non-cash payments.',
                 ]);
             }
 
             $amountPaid = $validated['amount_paid'] ?? $totals['total'];
-            // require amount paid to cover total when marking completed
+
             if ($amountPaid < $totals['total']) {
                 throw ValidationException::withMessages([
                     'amount_paid' => 'Amount paid is less than order total.',
@@ -228,11 +242,11 @@ class PosController extends Controller
             }
 
             $order->payments()->create([
-                'user_id' => $request->user()->id,
-                'method' => $validated['payment_method'],
-                'amount' => $amountPaid,
+                'user_id'   => $request->user()->id,
+                'method'    => $validated['payment_method'],
+                'amount'    => $amountPaid,
                 'reference' => $validated['payment_reference'] ?? null,
-                'notes' => 'Paid at checkout',
+                'notes'     => 'Paid at checkout',
             ]);
 
             $order->update(['status' => Order::STATUS_COMPLETED]);
@@ -240,7 +254,8 @@ class PosController extends Controller
 
         $request->session()->forget('pos_cart');
 
-        return redirect()->route('orders.receipt', $order)->with('success', 'Transaction recorded.' );
+        return redirect()->route('orders.receipt', $order)
+            ->with('success', 'Transaction recorded.');
     }
 
     public function receipt(Order $order): View
@@ -265,22 +280,22 @@ class PosController extends Controller
         $cart = $this->cart();
 
         return [
-            'items' => array_values($cart),
+            'items'  => array_values($cart),
             'totals' => $this->totals($cart),
         ];
     }
 
     private function totals(array $cart, float $discountAmount = 0.0, bool $vatEnabled = true): array
     {
-        $subtotal = collect($cart)->sum(fn ($item) => $item['price'] * $item['quantity']);
+        $subtotal  = collect($cart)->sum(fn ($item) => $item['price'] * $item['quantity']);
         $vatAmount = $vatEnabled ? round(($subtotal - $discountAmount) * 0.12, 2) : 0.0;
-        $total = max(0, round($subtotal - $discountAmount + $vatAmount, 2));
+        $total     = max(0, round($subtotal - $discountAmount + $vatAmount, 2));
 
         return [
-            'subtotal' => round($subtotal, 2),
+            'subtotal'        => round($subtotal, 2),
             'discount_amount' => round($discountAmount, 2),
-            'vat_amount' => round($vatAmount, 2),
-            'total' => $total,
+            'vat_amount'      => round($vatAmount, 2),
+            'total'           => $total,
         ];
     }
 }
