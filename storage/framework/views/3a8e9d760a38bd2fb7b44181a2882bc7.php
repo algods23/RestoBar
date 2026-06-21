@@ -7,10 +7,12 @@
     </div>
 
     <nav class="nav">
+        <?php if(auth()->user() && auth()->user()->role === 'admin'): ?>
         <a href="<?php echo e(route('dashboard')); ?>" class="d-flex align-items-center <?php echo e(request()->routeIs('dashboard') ? 'active' : ''); ?>">
             <span class="icon"><i class="bi bi-speedometer2"></i></span>
             <span class="label">Dashboard</span>
         </a>
+        <?php endif; ?>
         <a href="<?php echo e(route('pos.index')); ?>" class="d-flex align-items-center <?php echo e(request()->routeIs('pos.*') ? 'active' : ''); ?>">
             <span class="icon"><i class="bi bi-basket3"></i></span>
             <span class="label">POS</span>
@@ -23,6 +25,7 @@
             <span class="icon"><i class="bi bi-archive"></i></span>
             <span class="label">Archived</span>
         </a>
+        <?php if(auth()->user() && auth()->user()->role === 'admin'): ?>
         <a href="<?php echo e(route('products.index')); ?>" class="d-flex align-items-center <?php echo e(request()->routeIs('products.*') ? 'active' : ''); ?>">
             <span class="icon"><i class="bi bi-box-seam"></i></span>
             <span class="label">Products</span>
@@ -51,6 +54,7 @@
             <span class="icon"><i class="bi bi-gear"></i></span>
             <span class="label">Settings</span>
         </a>
+        <?php endif; ?>
     </nav>
 </aside>
 <?php /**PATH C:\laragon\www\RestoBar\resources\views/includes/sidebar.blade.php ENDPATH**/ ?>

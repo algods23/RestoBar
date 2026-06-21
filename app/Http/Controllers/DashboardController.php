@@ -11,8 +11,12 @@ use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request)
     {
+        if (auth()->user()->role !== 'admin') {
+            return redirect()->route('pos.index');
+        }
+
         $salesQuery = Order::query()->where('status', Order::STATUS_COMPLETED);
         $today = Carbon::today();
         $startOfWeek = Carbon::now()->startOfWeek();

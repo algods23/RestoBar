@@ -6,17 +6,11 @@
         {{-- Search Bar --}}
         <div class="card p-3 mb-3">
             <div class="row g-2 align-items-end">
-                <div class="col-md-3">
-                    <input id="barcodeInput" class="form-control form-control-lg" placeholder="Barcode">
-                </div>
                 <div class="col-md-4">
                     <input id="searchInput" class="form-control form-control-lg" placeholder="Search product...">
                 </div>
                 <div class="col-md-2">
                     <button id="searchBtn" class="btn btn-dark btn-lg w-100">Search</button>
-                </div>
-                <div class="col-md-3">
-                    <button id="resetBtn" class="btn btn-outline-secondary btn-lg w-100">Show All</button>
                 </div>
             </div>
         </div>

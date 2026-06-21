@@ -7,10 +7,12 @@
     </div>
 
     <nav class="nav">
+        @if(auth()->user() && auth()->user()->role === 'admin')
         <a href="{{ route('dashboard') }}" class="d-flex align-items-center {{ request()->routeIs('dashboard') ? 'active' : '' }}">
             <span class="icon"><i class="bi bi-speedometer2"></i></span>
             <span class="label">Dashboard</span>
         </a>
+        @endif
         <a href="{{ route('pos.index') }}" class="d-flex align-items-center {{ request()->routeIs('pos.*') ? 'active' : '' }}">
             <span class="icon"><i class="bi bi-basket3"></i></span>
             <span class="label">POS</span>
@@ -23,6 +25,7 @@
             <span class="icon"><i class="bi bi-archive"></i></span>
             <span class="label">Archived</span>
         </a>
+        @if(auth()->user() && auth()->user()->role === 'admin')
         <a href="{{ route('products.index') }}" class="d-flex align-items-center {{ request()->routeIs('products.*') ? 'active' : '' }}">
             <span class="icon"><i class="bi bi-box-seam"></i></span>
             <span class="label">Products</span>
@@ -51,5 +54,6 @@
             <span class="icon"><i class="bi bi-gear"></i></span>
             <span class="label">Settings</span>
         </a>
+        @endif
     </nav>
 </aside>

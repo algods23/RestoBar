@@ -12,7 +12,10 @@ use App\Http\Controllers\TableController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return auth()->check() ? redirect()->route('dashboard') : redirect()->route('login');
+    if (auth()->check()) {
+        return auth()->user()->role === 'admin' ? redirect()->route('dashboard') : redirect()->route('pos.index');
+    }
+    return redirect()->route('login');
 });
 
 Route::middleware('guest')->group(function () {
