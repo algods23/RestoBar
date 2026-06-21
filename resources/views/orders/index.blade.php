@@ -4,9 +4,23 @@
 <h1 class="h4 mb-3">Orders</h1>
 <div class="card p-3">
     <table class="table align-middle">
-        <thead><tr><th>ID</th><th>Customer</th><th>Table</th><th>Type</th><th>Status</th><th>Total</th><th>Date</th><th></th></tr></thead>
+        <thead><tr><th>ID</th><th>Customer</th><th>Table</th><th>Type</th><th>Status</th><th>Total</th><th>Time</th><th></th></tr></thead>
         <tbody>
+            @php
+                $lastDate = null;
+            @endphp
             @foreach ($orders as $order)
+                @php
+                    $currentDate = $order->created_at->format('F d, Y');
+                @endphp
+                @if ($currentDate !== $lastDate)
+                    @php $lastDate = $currentDate; @endphp
+                    <tr class="table-group-header">
+                        <td colspan="8" class="fw-semibold py-2 px-3 text-dark bg-light" style="font-size: 0.85rem; letter-spacing: 0.5px; border-bottom: 1px solid #e5e7eb; border-top: 1px solid #e5e7eb;">
+                            {{ strtoupper($currentDate) }}
+                        </td>
+                    </tr>
+                @endif
                 <tr>
                     <td>#{{ $order->id }}</td>
                     <td>{{ $order->customer_name ?: '—' }}</td>
@@ -14,7 +28,7 @@
                     <td>{{ str_replace('_', ' ', ucfirst($order->order_type)) }}</td>
                     <td>{{ ucfirst($order->status) }}</td>
                     <td>₱{{ number_format($order->total_amount, 2) }}</td>
-                    <td>{{ $order->created_at->format('M d, Y h:i A') }}</td>
+                    <td>{{ $order->created_at->format('h:i A') }}</td>
                     <td class="text-end">
                         <a href="{{ route('orders.show', $order) }}" class="btn btn-sm btn-outline-dark">View</a>
                         @if($order->status === 'pending')
