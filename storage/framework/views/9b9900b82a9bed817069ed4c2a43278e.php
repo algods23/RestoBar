@@ -264,7 +264,7 @@
 
 <div class="no-print" style="max-width:400px;margin:0 auto;">
     <button class="print-btn" onclick="window.print()">🖨️ Print Receipt</button>
-    <button class="back-btn" onclick="history.back()">← Back</button>
+    <button class="back-btn" onclick="window.location.href='<?php echo e(route('pos.index')); ?>'">← Back to POS</button>
 </div>
 <?php $__env->stopSection(); ?>
 
