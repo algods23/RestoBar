@@ -63,30 +63,34 @@
 
     
     <div class="col-lg-4">
-        <div class="card p-3 sticky-top" style="top: 88px;">
-            <h2 class="h5 mb-3">Current Cart</h2>
-
-            
-            <div class="mb-2">
-                <label class="form-label fw-semibold">Customer Name</label>
-                <input type="text" id="customerName" class="form-control" placeholder="Enter customer name">
+        <div class="card sticky-top" style="top: 88px; padding: 10px 12px;">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <h2 class="h6 mb-0 fw-bold">Current Cart</h2>
+                <button type="button" id="clearCartBtn" class="btn btn-outline-danger btn-sm py-0 px-2" title="Clear all items" style="font-size: 12px;">
+                    🗑 Clear
+                </button>
             </div>
 
             
-            <div class="mb-3">
-                <label class="form-label fw-semibold">Table(s)</label>
-                <div class="d-flex flex-wrap gap-2" id="tableGrid">
+            <div class="mb-1">
+                <input type="text" id="customerName" class="form-control form-control-sm" placeholder="Customer name (optional)">
+            </div>
+
+            
+            <div class="mb-1">
+                <div class="d-flex flex-wrap gap-1" id="tableGrid">
                     <?php $__currentLoopData = $tables; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $table): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <button type="button"
-                            class="btn btn-sm table-btn <?php echo e($table->is_occupied ? 'btn-danger disabled' : 'btn-outline-secondary'); ?>"
+                            class="btn btn-xs table-btn py-0 px-1 <?php echo e($table->is_occupied ? 'btn-danger disabled' : 'btn-outline-secondary'); ?>"
                             data-table="<?php echo e($table->number); ?>"
+                            style="font-size: 11px; line-height: 1.6;"
                             <?php echo e($table->is_occupied ? 'disabled' : ''); ?>>
                             T<?php echo e($table->number); ?>
 
                         </button>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                 </div>
-                <div class="form-text small">Selected: <span id="selectedTablesDisplay">None</span></div>
+                <div class="text-muted" style="font-size: 11px;">Selected: <span id="selectedTablesDisplay">None</span></div>
             </div>
 
             
@@ -95,46 +99,32 @@
             </div>
 
             
-            <form id="checkoutForm" class="mt-3">
+            <div id="cartTotals" class="border-top pt-1 mt-1" style="font-size: 12px;">
+                <div class="d-flex justify-content-between"><span>Subtotal</span><strong id="cart_subtotal">₱<?php echo e(number_format($totals['subtotal'], 2)); ?></strong></div>
+                <div class="d-flex justify-content-between"><span>Discount</span><strong id="cart_discount">₱<?php echo e(number_format($totals['discount_amount'], 2)); ?></strong></div>
+                <div class="d-flex justify-content-between"><span>VAT</span><strong id="cart_vat">₱<?php echo e(number_format($totals['vat_amount'], 2)); ?></strong></div>
+                <div class="d-flex justify-content-between mt-1"><span><strong>Total</strong></span><strong id="cart_total" style="font-size: 14px;">₱<?php echo e(number_format($totals['total'], 2)); ?></strong></div>
+            </div>
+
+            
+            <form id="checkoutForm" class="mt-1">
                 <?php echo csrf_field(); ?>
-                <div class="mb-2">
-                    <label class="form-label">Order Type</label>
-                    <select name="order_type" id="orderTypeSelect" class="form-select">
-                        <option value="dine_in">Dine-in</option>
-                        <option value="takeout">Takeout</option>
-                        <option value="mixed">Mixed (Dine-in + Takeout)</option>
-                        <option value="delivery">Delivery</option>
-                    </select>
+                <div class="row g-1 mb-1 align-items-center">
+                    <div class="col-4"><label class="form-label mb-0 small fw-semibold">Order Type</label></div>
+                    <div class="col-8">
+                        <select name="order_type" id="orderTypeSelect" class="form-select form-select-sm">
+                            <option value="dine_in">Dine-in</option>
+                            <option value="takeout">Takeout</option>
+                            <option value="mixed">Mixed</option>
+                            <option value="delivery">Delivery</option>
+                        </select>
+                    </div>
                 </div>
-                <div class="mb-2">
-                    <label class="form-label">Discount (₱)</label>
-                    <input type="number" step="0.01" name="discount_amount" id="discountInput" class="form-control" value="0" min="0">
-                </div>
-                <div class="mb-2">
-                    <label class="form-label">Payment Method</label>
-                    <select name="payment_method" id="paymentMethodSelect" class="form-select">
-                        <option value="cash">Cash</option>
-                        <option value="card">Card</option>
-                        <option value="gcash">GCash</option>
-                        <option value="bank_transfer">Bank Transfer</option>
-                    </select>
-                </div>
-                
-                <div class="mb-2" id="amountPaidRow">
-                    <label class="form-label">Amount Paid (₱)</label>
-                    <input type="number" step="0.01" name="amount_paid" id="amountPaidInput" class="form-control" min="0" placeholder="0.00">
-                    <div class="form-text">Change: <strong class="text-success">₱<span id="changeDisplay">0.00</span></strong></div>
-                </div>
-                
-                <div class="mb-2" id="referenceRow" style="display:none">
-                    <label class="form-label">Reference No.</label>
-                    <input type="text" name="payment_reference" id="paymentReference" class="form-control" placeholder="Transaction reference">
-                </div>
-                <div class="form-check mb-3">
+                <div class="form-check mb-1">
                     <input class="form-check-input" type="checkbox" name="vat_enabled" id="vatEnabled" value="1" checked>
-                    <label class="form-check-label" for="vatEnabled">Apply 12% VAT</label>
+                    <label class="form-check-label small" for="vatEnabled">Apply 12% VAT</label>
                 </div>
-                <button type="button" id="checkoutBtn" class="btn btn-success w-100 btn-lg">
+                <button type="button" id="checkoutBtn" class="btn btn-success w-100">
                     Checkout
                 </button>
             </form>
@@ -155,7 +145,6 @@
                     <tr><td class="text-muted">Customer</td><td id="modal_customer" class="fw-semibold">—</td></tr>
                     <tr><td class="text-muted">Table(s)</td><td id="modal_tables" class="fw-semibold">—</td></tr>
                     <tr><td class="text-muted">Order Type</td><td id="modal_type" class="fw-semibold">—</td></tr>
-                    <tr><td class="text-muted">Payment</td><td id="modal_payment" class="fw-semibold">—</td></tr>
                     <tr><td class="text-muted">Subtotal</td><td id="modal_subtotal" class="fw-semibold">—</td></tr>
                     <tr><td class="text-muted">Discount</td><td id="modal_discount" class="fw-semibold">—</td></tr>
                     <tr><td class="text-muted">VAT</td><td id="modal_vat" class="fw-semibold">—</td></tr>
@@ -163,20 +152,46 @@
                 </table>
 
                 
-                <div id="modal_type_breakdown" class="mb-2" style="display:none">
+                <div id="modal_type_breakdown" class="mb-3" style="display:none">
                     <div class="small fw-semibold text-muted mb-1">Items by Type:</div>
                     <div id="modal_dine_in_items" class="small text-muted"></div>
                     <div id="modal_takeout_items" class="small text-muted mt-1"></div>
                 </div>
 
-                <div id="modal_change_row" class="alert alert-info py-2 mb-0" style="display:none">
-                    Amount Paid: <strong>₱<span id="modal_paid">0.00</span></strong> &nbsp;|&nbsp;
-                    Change: <strong>₱<span id="modal_change">0.00</span></strong>
+                <hr>
+                <div class="payment-details-section">
+                    <h6 class="fw-bold mb-3">Payment Details</h6>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="form-label">Discount (₱)</label>
+                            <input type="number" step="0.01" name="discount_amount" id="discountInput" class="form-control" value="0" min="0">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Payment Method</label>
+                            <select name="payment_method" id="paymentMethodSelect" class="form-select">
+                                <option value="cash">Cash</option>
+                                <option value="card">Card</option>
+                                <option value="gcash">GCash</option>
+                                <option value="bank_transfer">Bank Transfer</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-2" id="amountPaidRow">
+                        <label class="form-label">Amount Paid (₱)</label>
+                        <input type="number" step="0.01" name="amount_paid" id="amountPaidInput" class="form-control" min="0" placeholder="0.00">
+                        <div class="form-text">Change: <strong class="text-success">₱<span id="changeDisplay">0.00</span></strong></div>
+                    </div>
+                    
+                    <div class="mb-2" id="referenceRow" style="display:none">
+                        <label class="form-label">Reference No.</label>
+                        <input type="text" name="payment_reference" id="paymentReference" class="form-control" placeholder="Transaction reference">
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" id="confirmCheckoutBtn" class="btn btn-success px-4">Confirm & Place Order</button>
+                <button type="button" id="confirmCheckoutBtn" class="btn btn-success px-4">Place Order</button>
             </div>
         </div>
     </div>
@@ -326,12 +341,6 @@ function renderCart(payload) {
                     `).join('')}
                 </tbody>
             </table>
-        </div>
-        <div id="cartTotals" class="border-top pt-2 small mt-2">
-            <div class="d-flex justify-content-between"><span>Subtotal</span><strong id="cart_subtotal">${money(totals.subtotal)}</strong></div>
-            <div class="d-flex justify-content-between"><span>Discount</span><strong id="cart_discount">${money(totals.discount_amount)}</strong></div>
-            <div class="d-flex justify-content-between"><span>VAT</span><strong id="cart_vat">${money(totals.vat_amount)}</strong></div>
-            <div class="d-flex justify-content-between fs-6 mt-1"><span><strong>Total</strong></span><strong id="cart_total">${money(totals.total)}</strong></div>
         </div>`;
 
     autoSetOrderType();
@@ -367,18 +376,25 @@ function updateChange() {
     if (el) el.textContent = change.toFixed(2);
 }
 
-document.getElementById('discountInput').addEventListener('input', updateTotals);
-document.getElementById('vatEnabled').addEventListener('change', updateTotals);
-document.getElementById('amountPaidInput').addEventListener('input', updateChange);
+const discountInputEl = document.getElementById('discountInput');
+const vatEnabledEl    = document.getElementById('vatEnabled');
 
-// ── Payment Method ────────────────────────────────────────────────────────────
-document.getElementById('paymentMethodSelect').addEventListener('change', function () {
-    const isCash = this.value === 'cash';
-    document.getElementById('amountPaidRow').style.display  = isCash ? '' : 'none';
-    document.getElementById('referenceRow').style.display   = !isCash ? '' : 'none';
-    const refInput = document.getElementById('paymentReference');
-    isCash ? refInput.removeAttribute('required') : refInput.setAttribute('required', 'required');
-});
+function refreshModalSummary() {
+    const calc = getCalcTotals();
+    const el = (id) => document.getElementById(id);
+    if (el('modal_discount')) el('modal_discount').textContent = money(calc.discount);
+    if (el('modal_subtotal')) el('modal_subtotal').textContent = money(calc.subtotal);
+    if (el('modal_vat'))      el('modal_vat').textContent      = money(calc.vat);
+    if (el('modal_total'))    el('modal_total').textContent    = money(calc.total);
+    // Recompute change display
+    const paid   = Number(el('amountPaidInput')?.value || 0);
+    const change = Math.max(0, Math.round((paid - calc.total) * 100) / 100);
+    if (el('changeDisplay')) el('changeDisplay').textContent = change.toFixed(2);
+    updateConfirmButtonText();
+}
+
+if (discountInputEl) discountInputEl.addEventListener('input', () => { updateTotals(); refreshModalSummary(); });
+if (vatEnabledEl)    vatEnabledEl.addEventListener('change',   () => { updateTotals(); refreshModalSummary(); });
 
 // ── Search ────────────────────────────────────────────────────────────────────
 function productCard(p) {
@@ -518,13 +534,67 @@ cartItemsEl.addEventListener('click', async e => {
     renderCart(payload);
 });
 
+// ── Clear Cart ───────────────────────────────────────────────────────────────
+const clearCartBtn = document.getElementById('clearCartBtn');
+if (clearCartBtn) {
+    clearCartBtn.addEventListener('click', async () => {
+        if (!confirm('Are you sure you want to clear all items from the cart?')) return;
+        const payload = await postJson(`<?php echo e(route('pos.cart.clear')); ?>`, {}, 'DELETE');
+        renderCart(payload);
+    });
+}
+
 // ── Checkout Modal ────────────────────────────────────────────────────────────
+function updateConfirmButtonText() {
+    document.getElementById('confirmCheckoutBtn').textContent = 'Place Order';
+}
+
+// Cache modal payment DOM refs
+const paymentMethodSelect = document.getElementById('paymentMethodSelect');
+const amountPaidInput     = document.getElementById('amountPaidInput');
+const amountPaidRow       = document.getElementById('amountPaidRow');
+const referenceRow        = document.getElementById('referenceRow');
+const paymentReference    = document.getElementById('paymentReference');
+const changeDisplay       = document.getElementById('changeDisplay');
+
+if (paymentMethodSelect) {
+    paymentMethodSelect.addEventListener('change', function () {
+        const isCash = this.value === 'cash';
+        if (amountPaidRow)  amountPaidRow.style.display  = isCash ? '' : 'none';
+        if (referenceRow)   referenceRow.style.display   = isCash ? 'none' : '';
+        if (paymentReference) {
+            isCash ? paymentReference.removeAttribute('required')
+                   : paymentReference.setAttribute('required', 'required');
+        }
+        updateConfirmButtonText();
+    });
+}
+
+if (amountPaidInput) {
+    amountPaidInput.addEventListener('input', function () {
+        const calc   = getCalcTotals();
+        const paid   = Number(this.value || 0);
+        const change = Math.max(0, Math.round((paid - calc.total) * 100) / 100);
+        if (changeDisplay) changeDisplay.textContent = change.toFixed(2);
+        updateConfirmButtonText();
+    });
+}
+
+
 document.getElementById('checkoutBtn').addEventListener('click', () => {
     const calc     = getCalcTotals();
-    const method   = document.getElementById('paymentMethodSelect').value;
-    const paid     = Number(document.getElementById('amountPaidInput')?.value || 0);
-    const change   = Math.max(0, Math.round((paid - calc.total) * 100) / 100);
     const orderType = document.getElementById('orderTypeSelect').value;
+
+    // Reset payment fields inside modal to default state
+    if (paymentMethodSelect) paymentMethodSelect.value = 'cash';
+    if (amountPaidRow) amountPaidRow.style.display = '';
+    if (referenceRow) referenceRow.style.display = 'none';
+    if (paymentReference) {
+        paymentReference.value = '';
+        paymentReference.removeAttribute('required');
+    }
+    if (amountPaidInput) amountPaidInput.value = '';
+    if (changeDisplay) changeDisplay.textContent = '0.00';
 
     // Populate modal summary
     document.getElementById('modal_customer').textContent =
@@ -533,8 +603,6 @@ document.getElementById('checkoutBtn').addEventListener('click', () => {
         selectedTables.length ? selectedTables.map(t => 'T' + t).join(', ') : '—';
     document.getElementById('modal_type').textContent =
         orderType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    document.getElementById('modal_payment').textContent =
-        method.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     document.getElementById('modal_subtotal').textContent = money(calc.subtotal);
     document.getElementById('modal_discount').textContent = money(calc.discount);
     document.getElementById('modal_vat').textContent      = money(calc.vat);
@@ -556,16 +624,7 @@ document.getElementById('checkoutBtn').addEventListener('click', () => {
         breakdown.style.display = 'none';
     }
 
-    // Cash change row
-    const changeRow = document.getElementById('modal_change_row');
-    if (method === 'cash') {
-        changeRow.style.display = '';
-        document.getElementById('modal_paid').textContent   = paid.toFixed(2);
-        document.getElementById('modal_change').textContent = change.toFixed(2);
-    } else {
-        changeRow.style.display = 'none';
-    }
-
+    updateConfirmButtonText();
     new bootstrap.Modal(document.getElementById('checkoutModal')).show();
 });
 
@@ -580,7 +639,12 @@ document.getElementById('confirmCheckoutBtn').addEventListener('click', async ()
         payload.vat_enabled   = formData.get('vat_enabled') ? 1 : 0;
         payload.customer_name = document.getElementById('customerName').value;
         payload.tables        = selectedTables;
-
+        
+        // Append modal payment inputs manually
+        payload.payment_method    = document.getElementById('paymentMethodSelect').value;
+        payload.amount_paid       = document.getElementById('amountPaidInput')?.value || null;
+        payload.payment_reference = document.getElementById('paymentReference')?.value || null;
+        payload.pay_now           = 1;
 
         const res = await fetch(`<?php echo e(route('pos.checkout')); ?>`, {
             method: 'POST',
@@ -609,13 +673,13 @@ document.getElementById('confirmCheckoutBtn').addEventListener('click', async ()
             const msg = data.message || (data.errors ? Object.values(data.errors).flat().join('\n') : 'Checkout failed. Please try again.');
             alert(msg);
             btn.disabled = false;
-            btn.textContent = 'Confirm & Place Order';
+            updateConfirmButtonText();
         }
     } catch (err) {
         bootstrap.Modal.getInstance(document.getElementById('checkoutModal')).hide();
         alert('An error occurred during checkout. Please try again.');
         btn.disabled = false;
-        btn.textContent = 'Confirm & Place Order';
+        updateConfirmButtonText();
     }
 });
 

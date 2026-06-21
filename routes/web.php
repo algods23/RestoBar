@@ -33,6 +33,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/pos/cart/items', [PosController::class, 'addToCart'])->name('pos.cart.add');
     Route::patch('/pos/cart/items', [PosController::class, 'updateCartItem'])->name('pos.cart.update');
     Route::delete('/pos/cart/items', [PosController::class, 'removeCartItem'])->name('pos.cart.remove');
+    Route::delete('/pos/cart', [PosController::class, 'clearCart'])->name('pos.cart.clear');
     Route::post('/pos/checkout', [PosController::class, 'checkout'])->name('pos.checkout');
     Route::get('/orders/{order}/receipt', [PosController::class, 'receipt'])->name('orders.receipt');
     Route::get('/orders/{order}/kitchen-receipt', [PosController::class, 'kitchenReceipt'])->name('orders.kitchen_receipt');

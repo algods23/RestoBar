@@ -168,6 +168,13 @@ class PosController extends Controller
         return response()->json($this->cartPayload());
     }
 
+    public function clearCart(): JsonResponse
+    {
+        $this->storeCart([]);
+
+        return response()->json($this->cartPayload());
+    }
+
     public function checkout(Request $request): \Illuminate\Http\JsonResponse|RedirectResponse
     {
         $validated = $request->validate([
