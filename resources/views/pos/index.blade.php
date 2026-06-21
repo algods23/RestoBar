@@ -12,6 +12,9 @@
                 <div class="col-md-2">
                     <button id="searchBtn" class="btn btn-dark btn-lg w-100">Search</button>
                 </div>
+                <div class="col-md-2">
+                    <button id="resetBtn" class="btn btn-outline-secondary btn-lg w-100">Reset</button>
+                </div>
             </div>
         </div>
         {{-- Category Filter --}}
@@ -398,7 +401,9 @@ function productCard(p) {
 }
 
 async function searchProducts() {
-    const query = document.getElementById('barcodeInput').value || document.getElementById('searchInput').value;
+    const barcodeEl = document.getElementById('barcodeInput');
+    const searchEl = document.getElementById('searchInput');
+    const query = (barcodeEl?.value || searchEl?.value || '');
     const res = await fetch(`{{ route('pos.search') }}?query=${encodeURIComponent(query)}`, {
         headers: { 'Accept': 'application/json' }
     });
@@ -410,15 +415,30 @@ async function searchProducts() {
     bindSearchResultButtons();
 }
 
-document.getElementById('searchBtn').addEventListener('click', searchProducts);
-document.getElementById('resetBtn').addEventListener('click', () => {
-    document.getElementById('barcodeInput').value = '';
-    document.getElementById('searchInput').value  = '';
-    searchResults.innerHTML = '';
-    productGrid.style.display = '';
-});
-document.getElementById('barcodeInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchProducts(); }});
-document.getElementById('searchInput').addEventListener('keydown',  e => { if (e.key === 'Enter') { e.preventDefault(); searchProducts(); }});
+const searchBtn = document.getElementById('searchBtn');
+if (searchBtn) searchBtn.addEventListener('click', searchProducts);
+
+const resetBtn = document.getElementById('resetBtn');
+if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+        const barcodeEl = document.getElementById('barcodeInput');
+        const searchEl = document.getElementById('searchInput');
+        if (barcodeEl) barcodeEl.value = '';
+        if (searchEl) searchEl.value = '';
+        searchResults.innerHTML = '';
+        productGrid.style.display = '';
+    });
+}
+
+const barcodeEl = document.getElementById('barcodeInput');
+if (barcodeEl) {
+    barcodeEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchProducts(); }});
+}
+
+const searchEl = document.getElementById('searchInput');
+if (searchEl) {
+    searchEl.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); searchProducts(); }});
+}
 
 // ── Add to Cart ───────────────────────────────────────────────────────────────
 async function addToCart(productId, stock, itemType = 'dine_in') {

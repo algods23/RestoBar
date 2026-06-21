@@ -4,19 +4,23 @@
 <h1 class="h4 mb-3">Archived Orders</h1>
 <div class="card p-3">
     <form method="GET" action="{{ url()->current() }}" class="row g-2 mb-3 align-items-end">
-        <div class="col-md-4 col-sm-6">
+        <div class="col-md-3 col-sm-6">
+            <label class="form-label small text-muted mb-1">Search Customer</label>
+            <input type="text" name="search" class="form-control form-control-sm" placeholder="Search name..." value="{{ request('search') }}">
+        </div>
+        <div class="col-md-3 col-sm-6">
             <label class="form-label small text-muted mb-1">From Date & Time</label>
             <input type="datetime-local" name="from" class="form-control form-control-sm" value="{{ request('from') }}">
         </div>
-        <div class="col-md-4 col-sm-6">
+        <div class="col-md-3 col-sm-6">
             <label class="form-label small text-muted mb-1">To Date & Time</label>
             <input type="datetime-local" name="to" class="form-control form-control-sm" value="{{ request('to') }}">
         </div>
-        <div class="col-md-4 col-sm-12 d-flex gap-2">
+        <div class="col-md-3 col-sm-12 d-flex gap-2">
             <button type="submit" class="btn btn-sm btn-dark flex-grow-1">
                 <i class="bi bi-funnel-fill"></i> Filter
             </button>
-            @if(request()->filled('from') || request()->filled('to'))
+            @if(request()->filled('from') || request()->filled('to') || request()->filled('search'))
                 <a href="{{ url()->current() }}" class="btn btn-sm btn-outline-secondary">
                     <i class="bi bi-arrow-counterclockwise"></i> Reset
                 </a>

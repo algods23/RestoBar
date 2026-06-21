@@ -17,6 +17,7 @@ class OrderController extends Controller
     public function index(Request $request): View
     {
         $orders = Order::with(['user', 'tables'])
+            ->when($request->filled('search'), fn ($query) => $query->where('customer_name', 'like', '%' . $request->string('search') . '%'))
             ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')), fn ($query) => $query->where('status', '!=', 'completed'))
             ->when($request->filled('order_type'), fn ($query) => $query->where('order_type', $request->string('order_type')))
             ->when($request->filled('from'), function ($query) use ($request) {
@@ -44,6 +45,7 @@ class OrderController extends Controller
     {
         $orders = Order::with(['user', 'tables'])
             ->where('status', 'completed')
+            ->when($request->filled('search'), fn ($query) => $query->where('customer_name', 'like', '%' . $request->string('search') . '%'))
             ->when($request->filled('order_type'), fn ($query) => $query->where('order_type', $request->string('order_type')))
             ->when($request->filled('from'), function ($query) use ($request) {
                 try {
