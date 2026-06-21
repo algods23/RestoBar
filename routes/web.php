@@ -34,6 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders/{order}/receipt', [PosController::class, 'receipt'])->name('orders.receipt');
     Route::get('/orders/{order}/kitchen-receipt', [PosController::class, 'kitchenReceipt'])->name('orders.kitchen_receipt');
 
+    Route::get('/orders/archived', [OrderController::class, 'archived'])->name('orders.archived');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');
     Route::get('/orders/{order}', [OrderController::class, 'show'])->name('orders.show');
     Route::post('/orders/{order}/pay', [OrderController::class, 'pay'])->name('orders.pay');

@@ -15,9 +15,13 @@
             <span class="icon"><i class="bi bi-basket3"></i></span>
             <span class="label">POS</span>
         </a>
-        <a href="{{ route('orders.index') }}" class="d-flex align-items-center {{ request()->routeIs('orders.*') ? 'active' : '' }}">
+        <a href="{{ route('orders.index') }}" class="d-flex align-items-center {{ request()->routeIs('orders.index') || request()->routeIs('orders.show') ? 'active' : '' }}">
             <span class="icon"><i class="bi bi-receipt"></i></span>
             <span class="label">Orders</span>
+        </a>
+        <a href="{{ route('orders.archived') }}" class="d-flex align-items-center {{ request()->routeIs('orders.archived') ? 'active' : '' }}">
+            <span class="icon"><i class="bi bi-archive"></i></span>
+            <span class="label">Archived</span>
         </a>
         <a href="{{ route('products.index') }}" class="d-flex align-items-center {{ request()->routeIs('products.*') ? 'active' : '' }}">
             <span class="icon"><i class="bi bi-box-seam"></i></span>

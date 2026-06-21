@@ -17,15 +17,53 @@ class OrderController extends Controller
     public function index(Request $request): View
     {
         $orders = Order::with(['user', 'tables'])
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')))
+            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')), fn ($query) => $query->where('status', '!=', 'completed'))
             ->when($request->filled('order_type'), fn ($query) => $query->where('order_type', $request->string('order_type')))
-            ->when($request->filled('from'), fn ($query) => $query->whereDate('created_at', '>=', $request->date('from')))
-            ->when($request->filled('to'), fn ($query) => $query->whereDate('created_at', '<=', $request->date('to')))
+            ->when($request->filled('from'), function ($query) use ($request) {
+                try {
+                    return $query->where('created_at', '>=', \Illuminate\Support\Carbon::parse($request->string('from'))->toDateTimeString());
+                } catch (\Exception $e) {
+                    return $query;
+                }
+            })
+            ->when($request->filled('to'), function ($query) use ($request) {
+                try {
+                    return $query->where('created_at', '<=', \Illuminate\Support\Carbon::parse($request->string('to'))->toDateTimeString());
+                } catch (\Exception $e) {
+                    return $query;
+                }
+            })
             ->latest()
             ->paginate(10)
             ->withQueryString();
 
         return view('orders.index', compact('orders'));
+    }
+
+    public function archived(Request $request): View
+    {
+        $orders = Order::with(['user', 'tables'])
+            ->where('status', 'completed')
+            ->when($request->filled('order_type'), fn ($query) => $query->where('order_type', $request->string('order_type')))
+            ->when($request->filled('from'), function ($query) use ($request) {
+                try {
+                    return $query->where('created_at', '>=', \Illuminate\Support\Carbon::parse($request->string('from'))->toDateTimeString());
+                } catch (\Exception $e) {
+                    return $query;
+                }
+            })
+            ->when($request->filled('to'), function ($query) use ($request) {
+                try {
+                    return $query->where('created_at', '<=', \Illuminate\Support\Carbon::parse($request->string('to'))->toDateTimeString());
+                } catch (\Exception $e) {
+                    return $query;
+                }
+            })
+            ->latest()
+            ->paginate(10)
+            ->withQueryString();
+
+        return view('orders.archived', compact('orders'));
     }
 
     public function show(Order $order): View
