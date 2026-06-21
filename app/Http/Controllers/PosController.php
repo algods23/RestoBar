@@ -283,6 +283,7 @@ class PosController extends Controller
             ]);
 
             $order->update(['status' => Order::STATUS_COMPLETED]);
+            $order->releaseTables();
         }
 
         $request->session()->forget('pos_cart');

@@ -52,4 +52,12 @@ class Order extends Model
     {
         return $this->hasMany(\App\Models\Table::class, 'current_order_id');
     }
+
+    public function releaseTables(): void
+    {
+        \App\Models\Table::where('current_order_id', $this->id)->update([
+            'is_occupied' => false,
+            'current_order_id' => null,
+        ]);
+    }
 }

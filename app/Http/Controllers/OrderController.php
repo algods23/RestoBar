@@ -44,6 +44,10 @@ class OrderController extends Controller
 
         $order->update($validated);
 
+        if (in_array($validated['status'], [Order::STATUS_COMPLETED, Order::STATUS_CANCELLED], true)) {
+            $order->releaseTables();
+        }
+
         return back()->with('success', 'Order status updated.');
     }
 
@@ -58,17 +62,18 @@ class OrderController extends Controller
             'notes' => ['nullable', 'string', 'max:255'],
         ]);
 
-        // Create payment record
-        $order->payments()->create([
-            'user_id' => $request->user()->id,
-            'method' => $validated['method'],
-            'amount' => $validated['amount'],
-            'reference' => $validated['reference'] ?? null,
-            'notes' => $validated['notes'] ?? null,
-        ]);
+        DB::transaction(function () use ($order, $request, $validated) {
+            $order->payments()->create([
+                'user_id' => $request->user()->id,
+                'method' => $validated['method'],
+                'amount' => $validated['amount'],
+                'reference' => $validated['reference'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+            ]);
 
-        // Mark order as completed
-        $order->update(['status' => Order::STATUS_COMPLETED]);
+            $order->update(['status' => Order::STATUS_COMPLETED]);
+            $order->releaseTables();
+        });
 
         return back()->with('success', 'Payment recorded and order completed.');
     }

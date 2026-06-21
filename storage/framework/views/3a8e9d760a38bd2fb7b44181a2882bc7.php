@@ -27,6 +27,10 @@
             <span class="icon"><i class="bi bi-tags"></i></span>
             <span class="label">Categories</span>
         </a>
+        <a href="<?php echo e(route('tables.index')); ?>" class="d-flex align-items-center <?php echo e(request()->routeIs('tables.*') ? 'active' : ''); ?>">
+            <span class="icon"><i class="bi bi-grid-3x3-gap"></i></span>
+            <span class="label">Tables</span>
+        </a>
         <a href="<?php echo e(route('inventory.index')); ?>" class="d-flex align-items-center <?php echo e(request()->routeIs('inventory.*') ? 'active' : ''); ?>">
             <span class="icon"><i class="bi bi-clipboard-data"></i></span>
             <span class="label">Inventory</span>
