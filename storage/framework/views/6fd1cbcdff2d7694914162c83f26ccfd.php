@@ -39,4 +39,4 @@
 </div>
 </body>
 </html>
-<?php /**PATH C:\laragon\www\RestoBar\resources\views/auth/login.blade.php ENDPATH**/ ?>
+<?php /**PATH C:\laragon\www\RestoBar\resources\views\auth\login.blade.php ENDPATH**/ ?>

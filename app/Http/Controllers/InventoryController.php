@@ -18,7 +18,7 @@ class InventoryController extends Controller
             ->whereColumn('stock', '<=', 'reorder_level')
             ->orderBy('name')
             ->get();
-        $products = Product::orderBy('name')->get();
+        $products = Product::with('category')->orderBy('name')->get();
 
         return view('inventory.index', compact('logs', 'lowStockProducts', 'products'));
     }

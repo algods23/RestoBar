@@ -16,4 +16,4 @@
         </table>
     </div>
 <?php endif; ?>
-<?php /**PATH C:\laragon\www\RestoBar\resources\views/pos/partials/cart-items.blade.php ENDPATH**/ ?>
+<?php /**PATH C:\laragon\www\RestoBar\resources\views\pos\partials\cart-items.blade.php ENDPATH**/ ?>

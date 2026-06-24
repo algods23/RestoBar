@@ -21,7 +21,6 @@
                     <select name="type" class="form-select">
                         <option value="stock_in">Stock In</option>
                         <option value="stock_out">Stock Out</option>
-                        <option value="adjustment">Adjustment</option>
                     </select>
                 </div>
                 <div class="mb-2">
@@ -36,14 +35,53 @@
             </form>
         </div>
 
-        <div class="card p-3">
+        <div class="card p-3 mb-3">
             <h2 class="h6">Low Stock Products</h2>
-            @foreach ($lowStockProducts as $product)
+            @forelse ($lowStockProducts as $product)
                 <div class="d-flex justify-content-between border-bottom py-2">
                     <span>{{ $product->name }}</span>
                     <strong>{{ $product->stock }}</strong>
                 </div>
-            @endforeach
+            @empty
+                <div class="text-muted py-2">No low stock products.</div>
+            @endforelse
+        </div>
+
+        <div class="card p-3">
+            <h2 class="h6">Product Availability</h2>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Category</th>
+                            <th class="text-end">Stock</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($products as $product)
+                            <tr>
+                                <td>{{ $product->name }}</td>
+                                <td>{{ $product->category?->name ?? 'Uncategorized' }}</td>
+                                <td class="text-end">
+                                    <strong>{{ $product->stock }}</strong>
+                                    <div class="small text-muted">Reorder: {{ $product->reorder_level }}</div>
+                                </td>
+                                <td>
+                                    @if ($product->stock <= 0)
+                                        <span class="badge bg-danger">Out</span>
+                                    @elseif ($product->isLowStock())
+                                        <span class="badge bg-warning text-dark">Low</span>
+                                    @else
+                                        <span class="badge bg-success">Available</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
     <div class="col-lg-8">
