@@ -4,7 +4,7 @@
         '' => ['label' => 'All', 'class' => 'secondary'],
         'available' => ['label' => 'Good', 'class' => 'success'],
         'low' => ['label' => 'Low', 'class' => 'warning'],
-        'out' => ['label' => 'Critical', 'class' => 'danger'],
+        'out' => ['label' => 'No Stock', 'class' => 'danger'],
     ];
     $currentAvailability = request('availability', '');
 ?>
@@ -60,7 +60,7 @@
         <div class="card mt-3">
             <div class="card-body p-4">
                 <div class="d-flex align-items-center justify-content-between mb-3">
-                    <h2 class="h6 mb-0">Recent Stock Activity</h2>
+                    <h2 class="h6 mb-0">Logs</h2>
                     <span class="small text-muted"><?php echo e($logs->total()); ?> logs</span>
                 </div>
 
@@ -91,10 +91,28 @@
                     </table>
                 </div>
 
-                <div class="mt-3">
-                    <?php echo e($logs->links('pagination.default')); ?>
+                <?php if($logs->hasPages()): ?>
+                    <div class="d-flex align-items-center justify-content-between gap-2 mt-3 pt-3 border-top">
+                        <a
+                            href="<?php echo e($logs->previousPageUrl() ?: '#'); ?>"
+                            class="btn btn-sm btn-outline-secondary <?php echo e($logs->onFirstPage() ? 'disabled' : ''); ?>"
+                            aria-label="Previous logs page"
+                        >
+                            Prev
+                        </a>
+                        <span class="small text-muted text-nowrap">
+                            Page <?php echo e($logs->currentPage()); ?> of <?php echo e($logs->lastPage()); ?>
 
-                </div>
+                        </span>
+                        <a
+                            href="<?php echo e($logs->nextPageUrl() ?: '#'); ?>"
+                            class="btn btn-sm btn-outline-secondary <?php echo e($logs->hasMorePages() ? '' : 'disabled'); ?>"
+                            aria-label="Next logs page"
+                        >
+                            Next
+                        </a>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -171,7 +189,7 @@
                                 <?php
                                     $isCritical = $product->stock <= 0;
                                     $isLow = ! $isCritical && $product->isLowStock();
-                                    $statusLabel = $isCritical ? 'Critical' : ($isLow ? 'Low' : 'Good');
+                                    $statusLabel = $isCritical ? 'No Stock' : ($isLow ? 'Low' : 'Good');
                                     $statusClass = $isCritical ? 'danger' : ($isLow ? 'warning' : 'success');
                                 ?>
                                 <tr>

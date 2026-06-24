@@ -6,7 +6,7 @@
         '' => ['label' => 'All', 'class' => 'secondary'],
         'available' => ['label' => 'Good', 'class' => 'success'],
         'low' => ['label' => 'Low', 'class' => 'warning'],
-        'out' => ['label' => 'Critical', 'class' => 'danger'],
+        'out' => ['label' => 'No Stock', 'class' => 'danger'],
     ];
     $currentAvailability = request('availability', '');
 @endphp
@@ -62,7 +62,7 @@
         <div class="card mt-3">
             <div class="card-body p-4">
                 <div class="d-flex align-items-center justify-content-between mb-3">
-                    <h2 class="h6 mb-0">Recent Stock Activity</h2>
+                    <h2 class="h6 mb-0">Logs</h2>
                     <span class="small text-muted">{{ $logs->total() }} logs</span>
                 </div>
 
@@ -93,9 +93,27 @@
                     </table>
                 </div>
 
-                <div class="mt-3">
-                    {{ $logs->links('pagination.default') }}
-                </div>
+                @if ($logs->hasPages())
+                    <div class="d-flex align-items-center justify-content-between gap-2 mt-3 pt-3 border-top">
+                        <a
+                            href="{{ $logs->previousPageUrl() ?: '#' }}"
+                            class="btn btn-sm btn-outline-secondary {{ $logs->onFirstPage() ? 'disabled' : '' }}"
+                            aria-label="Previous logs page"
+                        >
+                            Prev
+                        </a>
+                        <span class="small text-muted text-nowrap">
+                            Page {{ $logs->currentPage() }} of {{ $logs->lastPage() }}
+                        </span>
+                        <a
+                            href="{{ $logs->nextPageUrl() ?: '#' }}"
+                            class="btn btn-sm btn-outline-secondary {{ $logs->hasMorePages() ? '' : 'disabled' }}"
+                            aria-label="Next logs page"
+                        >
+                            Next
+                        </a>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -127,15 +145,15 @@
                     </ul>
                 </div>
 
-                <form action="{{ route('inventory.index') }}" method="GET" id="productFilterForm" class="row g-2 mb-3">
+                <form action="{{ route('inventory.index') }}" method="GET" id="productFilterForm" class="row g-2 mb-3 align-items-center">
                     <input type="hidden" name="availability" value="{{ request('availability') }}">
-                    <div class="col-md-7">
+                    <div class="col-md-6">
                         <label class="visually-hidden" for="productSearch">Search product name</label>
                         <input
                             type="text"
                             name="search"
                             id="productSearch"
-                            class="form-control"
+                            class="form-control form-control-sm"
                             placeholder="Search product name..."
                             value="{{ request('search') }}"
                             autocomplete="off"
@@ -143,15 +161,15 @@
                     </div>
                     <div class="col-md-4">
                         <label class="visually-hidden" for="categoryFilter">Category</label>
-                        <select name="category_id" id="categoryFilter" class="form-select">
+                        <select name="category_id" id="categoryFilter" class="form-select form-select-sm">
                             <option value="">All Categories</option>
                             @foreach($categories as $category)
                                 <option value="{{ $category->id }}" @selected(request('category_id') == $category->id)>{{ $category->name }}</option>
                             @endforeach
                         </select>
                     </div>
-                    <div class="col-md-1">
-                        <a href="{{ route('inventory.index') }}" class="btn btn-outline-secondary w-100" title="Clear filters">Clear</a>
+                    <div class="col-md-2">
+                        <a href="{{ route('inventory.index') }}" class="btn btn-sm btn-outline-secondary w-100 text-nowrap" title="Clear filters">Clear</a>
                     </div>
                 </form>
 
@@ -171,7 +189,7 @@
                                 @php
                                     $isCritical = $product->stock <= 0;
                                     $isLow = ! $isCritical && $product->isLowStock();
-                                    $statusLabel = $isCritical ? 'Critical' : ($isLow ? 'Low' : 'Good');
+                                    $statusLabel = $isCritical ? 'No Stock' : ($isLow ? 'Low' : 'Good');
                                     $statusClass = $isCritical ? 'danger' : ($isLow ? 'warning' : 'success');
                                 @endphp
                                 <tr>

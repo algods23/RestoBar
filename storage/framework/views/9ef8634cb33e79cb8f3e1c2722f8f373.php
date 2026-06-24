@@ -4,7 +4,7 @@
         '' => ['label' => 'All', 'class' => 'secondary'],
         'available' => ['label' => 'Good', 'class' => 'success'],
         'low' => ['label' => 'Low', 'class' => 'warning'],
-        'out' => ['label' => 'Critical', 'class' => 'danger'],
+        'out' => ['label' => 'No Stock', 'class' => 'danger'],
     ];
     $currentAvailability = request('availability', '');
 ?>
@@ -60,7 +60,7 @@
         <div class="card mt-3">
             <div class="card-body p-4">
                 <div class="d-flex align-items-center justify-content-between mb-3">
-                    <h2 class="h6 mb-0">Recent Stock Activity</h2>
+                    <h2 class="h6 mb-0">Logs</h2>
                     <span class="small text-muted"><?php echo e($logs->total()); ?> logs</span>
                 </div>
 
@@ -91,10 +91,28 @@
                     </table>
                 </div>
 
-                <div class="mt-3">
-                    <?php echo e($logs->links('pagination.default')); ?>
+                <?php if($logs->hasPages()): ?>
+                    <div class="d-flex align-items-center justify-content-between gap-2 mt-3 pt-3 border-top">
+                        <a
+                            href="<?php echo e($logs->previousPageUrl() ?: '#'); ?>"
+                            class="btn btn-sm btn-outline-secondary <?php echo e($logs->onFirstPage() ? 'disabled' : ''); ?>"
+                            aria-label="Previous logs page"
+                        >
+                            Prev
+                        </a>
+                        <span class="small text-muted text-nowrap">
+                            Page <?php echo e($logs->currentPage()); ?> of <?php echo e($logs->lastPage()); ?>
 
-                </div>
+                        </span>
+                        <a
+                            href="<?php echo e($logs->nextPageUrl() ?: '#'); ?>"
+                            class="btn btn-sm btn-outline-secondary <?php echo e($logs->hasMorePages() ? '' : 'disabled'); ?>"
+                            aria-label="Next logs page"
+                        >
+                            Next
+                        </a>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -127,15 +145,15 @@
                     </ul>
                 </div>
 
-                <form action="<?php echo e(route('inventory.index')); ?>" method="GET" id="productFilterForm" class="row g-2 mb-3">
+                <form action="<?php echo e(route('inventory.index')); ?>" method="GET" id="productFilterForm" class="row g-2 mb-3 align-items-center">
                     <input type="hidden" name="availability" value="<?php echo e(request('availability')); ?>">
-                    <div class="col-md-7">
+                    <div class="col-md-6">
                         <label class="visually-hidden" for="productSearch">Search product name</label>
                         <input
                             type="text"
                             name="search"
                             id="productSearch"
-                            class="form-control"
+                            class="form-control form-control-sm"
                             placeholder="Search product name..."
                             value="<?php echo e(request('search')); ?>"
                             autocomplete="off"
@@ -143,15 +161,15 @@
                     </div>
                     <div class="col-md-4">
                         <label class="visually-hidden" for="categoryFilter">Category</label>
-                        <select name="category_id" id="categoryFilter" class="form-select">
+                        <select name="category_id" id="categoryFilter" class="form-select form-select-sm">
                             <option value="">All Categories</option>
                             <?php $__currentLoopData = $categories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $category): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <option value="<?php echo e($category->id); ?>" <?php if(request('category_id') == $category->id): echo 'selected'; endif; ?>><?php echo e($category->name); ?></option>
                             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </select>
                     </div>
-                    <div class="col-md-1">
-                        <a href="<?php echo e(route('inventory.index')); ?>" class="btn btn-outline-secondary w-100" title="Clear filters">Clear</a>
+                    <div class="col-md-2">
+                        <a href="<?php echo e(route('inventory.index')); ?>" class="btn btn-sm btn-outline-secondary w-100 text-nowrap" title="Clear filters">Clear</a>
                     </div>
                 </form>
 
@@ -171,7 +189,7 @@
                                 <?php
                                     $isCritical = $product->stock <= 0;
                                     $isLow = ! $isCritical && $product->isLowStock();
-                                    $statusLabel = $isCritical ? 'Critical' : ($isLow ? 'Low' : 'Good');
+                                    $statusLabel = $isCritical ? 'No Stock' : ($isLow ? 'Low' : 'Good');
                                     $statusClass = $isCritical ? 'danger' : ($isLow ? 'warning' : 'success');
                                 ?>
                                 <tr>
