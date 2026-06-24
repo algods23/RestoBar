@@ -11,7 +11,7 @@
                     <label class="form-label">Product</label>
                     <select name="product_id" class="form-select" required>
                         <option value="">Select a product...</option>
-                        <?php $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <?php $__currentLoopData = $adjustmentProducts; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <option value="<?php echo e($product->id); ?>"><?php echo e($product->name); ?> (Stock: <?php echo e($product->stock); ?>)</option>
                         <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </select>
@@ -48,9 +48,56 @@
         </div>
 
         <div class="card p-3">
-            <h2 class="h6">Product Availability</h2>
+            <h2 class="h6">Inventory Logs</h2>
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>Product</th><th>Type</th><th>Qty</th><th>New</th></tr></thead>
+                    <tbody>
+                        <?php $__currentLoopData = $logs; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $log): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <tr>
+                                <td><?php echo e($log->product?->name); ?></td>
+                                <td><?php echo e($log->type); ?></td>
+                                <td><?php echo e($log->quantity); ?></td>
+                                <td><?php echo e($log->new_stock); ?></td>
+                            </tr>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php echo e($logs->links('pagination.default')); ?>
+
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card p-3">
+            <h2 class="h5">Product Availability</h2>
+            <form action="<?php echo e(route('inventory.index')); ?>" method="GET" class="row g-2 mb-3">
+                <div class="col-md-4">
+                    <input type="text" name="search" class="form-control" placeholder="Search product name..." value="<?php echo e(request('search')); ?>">
+                </div>
+                <div class="col-md-3">
+                    <select name="category_id" class="form-select">
+                        <option value="">All Categories</option>
+                        <?php $__currentLoopData = $categories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $category): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <option value="<?php echo e($category->id); ?>" <?php if(request('category_id') == $category->id): echo 'selected'; endif; ?>><?php echo e($category->name); ?></option>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="availability" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="available" <?php if(request('availability') === 'available'): echo 'selected'; endif; ?>>Available</option>
+                        <option value="low" <?php if(request('availability') === 'low'): echo 'selected'; endif; ?>>Low Stock</option>
+                        <option value="out" <?php if(request('availability') === 'out'): echo 'selected'; endif; ?>>Out of Stock</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-dark flex-fill">Filter</button>
+                    <a href="<?php echo e(route('inventory.index')); ?>" class="btn btn-outline-secondary">Clear</a>
+                </div>
+            </form>
+            <div class="table-responsive">
+                <table class="table align-middle">
                     <thead>
                         <tr>
                             <th>Product</th>
@@ -60,7 +107,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <?php $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <?php $__empty_1 = true; $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                             <tr>
                                 <td><?php echo e($product->name); ?></td>
                                 <td><?php echo e($product->category?->name ?? 'Uncategorized'); ?></td>
@@ -78,31 +125,15 @@
                                     <?php endif; ?>
                                 </td>
                             </tr>
-                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                            <tr>
+                                <td colspan="4" class="text-center text-muted py-4">No products found.</td>
+                            </tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
-        </div>
-    </div>
-    <div class="col-lg-8">
-        <div class="card p-3">
-            <h2 class="h5">Inventory Logs</h2>
-            <table class="table align-middle">
-                <thead><tr><th>Product</th><th>Type</th><th>Qty</th><th>Previous</th><th>New</th><th>Date</th></tr></thead>
-                <tbody>
-                    <?php $__currentLoopData = $logs; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $log): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                        <tr>
-                            <td><?php echo e($log->product?->name); ?></td>
-                            <td><?php echo e($log->type); ?></td>
-                            <td><?php echo e($log->quantity); ?></td>
-                            <td><?php echo e($log->previous_stock); ?></td>
-                            <td><?php echo e($log->new_stock); ?></td>
-                            <td><?php echo e($log->created_at->format('M d, Y h:i A')); ?></td>
-                        </tr>
-                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-                </tbody>
-            </table>
-            <?php echo e($logs->links('pagination.default')); ?>
+            <?php echo e($products->links('pagination.default')); ?>
 
         </div>
     </div>

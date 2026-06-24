@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Category;
 use App\Models\Inventory;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
@@ -11,16 +12,40 @@ use Illuminate\View\View;
 
 class InventoryController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $logs = Inventory::with(['product', 'user', 'order'])->latest()->paginate(10);
+        $logs = Inventory::with(['product', 'user', 'order'])
+            ->latest()
+            ->paginate(10, ['*'], 'log_page')
+            ->appends($request->except('log_page'));
+
         $lowStockProducts = Product::with('category')
             ->whereColumn('stock', '<=', 'reorder_level')
             ->orderBy('name')
             ->get();
-        $products = Product::with('category')->orderBy('name')->get();
 
-        return view('inventory.index', compact('logs', 'lowStockProducts', 'products'));
+        $categories = Category::orderBy('name')->get();
+        $adjustmentProducts = Product::orderBy('name')->get();
+        $products = Product::with('category')
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $query->where('name', 'like', '%'.$request->search.'%');
+            })
+            ->when($request->filled('category_id'), function ($query) use ($request) {
+                $query->where('category_id', $request->category_id);
+            })
+            ->when($request->filled('availability'), function ($query) use ($request) {
+                match ($request->availability) {
+                    'out' => $query->where('stock', '<=', 0),
+                    'low' => $query->where('stock', '>', 0)->whereColumn('stock', '<=', 'reorder_level'),
+                    'available' => $query->whereColumn('stock', '>', 'reorder_level'),
+                    default => null,
+                };
+            })
+            ->orderBy('name')
+            ->paginate(20, ['*'], 'product_page')
+            ->appends($request->except('product_page'));
+
+        return view('inventory.index', compact('logs', 'lowStockProducts', 'products', 'adjustmentProducts', 'categories'));
     }
 
     public function store(Request $request): RedirectResponse
