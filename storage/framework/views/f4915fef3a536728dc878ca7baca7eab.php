@@ -152,12 +152,41 @@
     (function () {
         const customBtn = document.getElementById('customPeriodBtn');
         const periodInput = document.getElementById('reportPeriod');
+        const fromInput = document.querySelector('input[name="from"]');
+        const toInput = document.querySelector('input[name="to"]');
+        const form = document.querySelector('form');
+
+        function updatePeriodButtons() {
+            const buttons = customBtn.parentElement.querySelectorAll('.btn');
+            buttons.forEach(btn => {
+                if (btn.type === 'submit') {
+                    btn.classList.remove('btn-dark');
+                    btn.classList.add('btn-outline-dark');
+                }
+            });
+            customBtn.classList.remove('btn-outline-dark');
+            customBtn.classList.add('btn-dark');
+        }
+
+        function handleDateChange() {
+            periodInput.value = 'custom';
+            updatePeriodButtons();
+            form.submit();
+        }
 
         if (customBtn && periodInput) {
             customBtn.addEventListener('click', function () {
                 periodInput.value = 'custom';
-                customBtn.closest('form').submit();
+                form.submit();
             });
+        }
+
+        if (fromInput) {
+            fromInput.addEventListener('change', handleDateChange);
+        }
+
+        if (toInput) {
+            toInput.addEventListener('change', handleDateChange);
         }
     })();
 </script>

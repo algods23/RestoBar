@@ -50,9 +50,9 @@
             <span class="icon"><i class="bi bi-bar-chart-line"></i></span>
             <span class="label">Reports</span>
         </a>
-        <a href="/users" class="d-flex align-items-center">
+        <a href="{{ route('users.index') }}" class="d-flex align-items-center {{ request()->routeIs('users.*') ? 'active' : '' }}">
             <span class="icon"><i class="bi bi-people"></i></span>
-            <span class="label">Users</span>
+            <span class="label">Staff</span>
         </a>
         <a href="/settings" class="d-flex align-items-center">
             <span class="icon"><i class="bi bi-gear"></i></span>
