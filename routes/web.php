@@ -56,6 +56,6 @@ Route::middleware('auth')->group(function () {
         Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
         Route::post('/inventory', [InventoryController::class, 'store'])->name('inventory.store');
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
-        Route::get('/reports/pdf', [ReportController::class, 'exportPdf'])->name('reports.pdf');
+        Route::get('/reports/excel', [ReportController::class, 'exportExcel'])->name('reports.excel');
     });
 });
