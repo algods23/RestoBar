@@ -194,7 +194,8 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" id="confirmCheckoutBtn" class="btn btn-success px-4">Place Order</button>
+                <button type="button" id="savePendingOrderBtn" class="btn btn-primary px-4">Save (Pay Later)</button>
+                <button type="button" id="confirmCheckoutBtn" class="btn btn-success px-4">Pay & Complete</button>
             </div>
         </div>
     </div>
@@ -720,8 +721,9 @@ document.getElementById('checkoutBtn').addEventListener('click', () => {
     new bootstrap.Modal(document.getElementById('checkoutModal')).show();
 });
 
-document.getElementById('confirmCheckoutBtn').addEventListener('click', async () => {
-    const btn = document.getElementById('confirmCheckoutBtn');
+async function submitCheckout(payNow, btnId) {
+    const btn = document.getElementById(btnId);
+    const oldText = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Processing…';
 
@@ -737,7 +739,7 @@ document.getElementById('confirmCheckoutBtn').addEventListener('click', async ()
         payload.payment_method    = document.getElementById('paymentMethodSelect').value;
         payload.amount_paid       = document.getElementById('amountPaidInput')?.value || null;
         payload.payment_reference = document.getElementById('paymentReference')?.value || null;
-        payload.pay_now           = 1;
+        payload.pay_now           = payNow ? 1 : 0;
 
         const res = await fetch(`<?php echo e(route('pos.checkout')); ?>`, {
             method: 'POST',
@@ -760,24 +762,32 @@ document.getElementById('confirmCheckoutBtn').addEventListener('click', async ()
             if (data.kitchen_receipt_url) {
                 window.open(data.kitchen_receipt_url, 'kitchen_receipt', 'width=400,height=600');
             }
-            window.location.href = data.redirect_url;
+            if (payNow) {
+                window.location.href = data.redirect_url;
+            } else {
+                window.location.href = `<?php echo e(route('pos.index')); ?>`; // Reload POS to show occupied tables
+            }
         } else {
             // Show validation errors
             const msg = data.message || (data.errors ? Object.values(data.errors).flat().join('\n') : 'Checkout failed. Please try again.');
             alert(msg);
             btn.disabled = false;
-            updateConfirmButtonText();
+            btn.textContent = oldText;
         }
     } catch (err) {
         bootstrap.Modal.getInstance(document.getElementById('checkoutModal')).hide();
         alert('An error occurred during checkout. Please try again.');
         btn.disabled = false;
-        updateConfirmButtonText();
+        btn.textContent = oldText;
     }
-});
+}
+
+document.getElementById('confirmCheckoutBtn').addEventListener('click', () => submitCheckout(true, 'confirmCheckoutBtn'));
+document.getElementById('savePendingOrderBtn').addEventListener('click', () => submitCheckout(false, 'savePendingOrderBtn'));
+
 
 // ── Add to Existing Order ──────────────────────────────────────────────────────
-let selectedAddOrderTable = null;
+let selectedAddOrderId = null;
 
 document.getElementById('addToOrderBtn').addEventListener('click', async () => {
     const items = window.lastCartPayload?.items ?? [];
@@ -797,7 +807,7 @@ document.getElementById('addToOrderBtn').addEventListener('click', async () => {
     listEl.innerHTML = '<div class="text-center text-muted py-3">Loading tables...</div>';
     detailsEl.style.display = 'none';
     confirmBtn.disabled = true;
-    selectedAddOrderTable = null;
+    selectedAddOrderId = null;
 
     try {
         const res = await fetch(`<?php echo e(route('pos.occupied_tables')); ?>`);
@@ -811,7 +821,7 @@ document.getElementById('addToOrderBtn').addEventListener('click', async () => {
 
         let html = '<div class="d-flex flex-wrap gap-2">';
         tables.forEach(t => {
-            html += `<button type="button" class="btn btn-outline-danger add-order-table-btn" data-number="${t.number}" data-info='${JSON.stringify(t)}'>T${t.number}</button>`;
+            html += `<button type="button" class="btn btn-outline-danger add-order-table-btn" data-order_id="${t.order_id}" data-info='${JSON.stringify(t)}'>T${t.number}</button>`;
         });
         html += '</div>';
         listEl.innerHTML = html;
@@ -826,9 +836,9 @@ document.getElementById('addToOrderBtn').addEventListener('click', async () => {
                 this.classList.add('btn-danger', 'text-white');
 
                 const info = JSON.parse(this.dataset.info);
-                selectedAddOrderTable = info.number;
+                selectedAddOrderId = info.order_id;
 
-                document.getElementById('addOrder_table').textContent = 'Table ' + info.number;
+                document.getElementById('addOrder_table').textContent = 'Table(s) ' + info.number;
                 document.getElementById('addOrder_customer').textContent = info.customer_name ? `(${info.customer_name})` : '';
                 document.getElementById('addOrder_orderId').textContent = 'Order #' + info.order_id;
                 document.getElementById('addOrder_currentTotal').textContent = '₱' + info.order_total;
@@ -848,7 +858,7 @@ document.getElementById('addToOrderBtn').addEventListener('click', async () => {
 });
 
 document.getElementById('confirmAddToOrderBtn').addEventListener('click', async () => {
-    if (!selectedAddOrderTable) return;
+    if (!selectedAddOrderId) return;
     
     const btn = document.getElementById('confirmAddToOrderBtn');
     btn.disabled = true;
@@ -862,7 +872,7 @@ document.getElementById('confirmAddToOrderBtn').addEventListener('click', async 
                 'X-CSRF-TOKEN': csrf,
                 'Accept': 'application/json'
             },
-            body: JSON.stringify({ table_number: selectedAddOrderTable })
+            body: JSON.stringify({ order_id: selectedAddOrderId })
         });
         const data = await res.json();
         

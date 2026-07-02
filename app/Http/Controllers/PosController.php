@@ -346,25 +346,29 @@ class PosController extends Controller
             ->orderBy('number')
             ->get()
             ->filter(fn ($t) => $t->currentOrder !== null)
-            ->map(fn ($t) => [
-                'number'        => $t->number,
-                'order_id'      => $t->currentOrder->id,
-                'customer_name' => $t->currentOrder->customer_name,
-                'order_total'   => number_format($t->currentOrder->total_amount, 2),
-                'items_count'   => $t->currentOrder->items()->count(),
-            ])
+            ->groupBy('current_order_id')
+            ->map(function ($group) {
+                $order = $group->first()->currentOrder;
+                return [
+                    'number'        => $group->pluck('number')->implode(', '),
+                    'order_id'      => $order->id,
+                    'customer_name' => $order->customer_name,
+                    'order_total'   => number_format($order->total_amount, 2),
+                    'items_count'   => $order->items()->count(),
+                ];
+            })
             ->values();
 
         return response()->json($tables);
     }
 
     /**
-     * Add current cart items as add-ons to an existing order (selected by table).
+     * Add current cart items as add-ons to an existing order.
      */
     public function addToExistingOrder(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'table_number' => ['required', 'integer'],
+            'order_id' => ['required', 'integer', 'exists:orders,id'],
         ]);
 
         $cart = $this->cart();
@@ -373,16 +377,11 @@ class PosController extends Controller
             return response()->json(['success' => false, 'message' => 'Cart is empty.'], 422);
         }
 
-        $table = Table::where('number', $validated['table_number'])
-            ->where('is_occupied', true)
-            ->whereNotNull('current_order_id')
-            ->first();
+        $order = Order::find($validated['order_id']);
 
-        if (!$table || !$table->currentOrder || $table->currentOrder->status !== 'pending') {
-            return response()->json(['success' => false, 'message' => 'No active order found for this table.'], 422);
+        if (!$order || $order->status !== 'pending') {
+            return response()->json(['success' => false, 'message' => 'No active order found.'], 422);
         }
-
-        $order = $table->currentOrder;
 
         DB::transaction(function () use ($order, $cart, $request) {
             foreach ($cart as $cartItem) {
