@@ -78,6 +78,7 @@
                     </div>
 
                     <button class="btn btn-dark w-100 mt-3">Save Adjustment</button>
+                    <button type="button" id="viewLogsBtn" class="btn btn-outline-secondary w-100 mt-2">View Logs</button>
                 </form>
             </div>
         </div>
@@ -206,7 +207,7 @@
     </div>
 
     <div class="col-12">
-        <div class="card">
+        <div class="card" id="logsSection">
             <div class="card-body p-3">
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <h2 class="h6 mb-0">Logs</h2>
@@ -308,6 +309,14 @@
                 adjustProduct.focus();
             });
         });
+
+        const viewLogsBtn = document.getElementById('viewLogsBtn');
+        const logsSection = document.getElementById('logsSection');
+        if (viewLogsBtn && logsSection) {
+            viewLogsBtn.addEventListener('click', function () {
+                logsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            });
+        }
     })();
 </script>
 <?php $__env->stopPush(); ?>
