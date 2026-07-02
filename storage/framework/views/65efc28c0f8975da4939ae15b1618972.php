@@ -32,7 +32,7 @@
                     <select id="yearSelect" class="form-select form-select-sm">
                         <?php for($i = 0; $i < 5; $i++): ?>
                             <?php $year = date('Y') - $i ?>
-                            <option value="<?php echo e($year); ?>" <?php echo e(request('year') == $year ? 'selected' : ''); ?>><?php echo e($year); ?></option>
+                            <option value="<?php echo e($year); ?>" <?php echo e((request('year') == $year) || (request('period') == 'year' && $i == 0) ? 'selected' : ''); ?>><?php echo e($year); ?></option>
                         <?php endfor; ?>
                     </select>
                 </div>

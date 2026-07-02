@@ -32,7 +32,7 @@ class DashboardController extends Controller
         $period = $request->get('period', 'day');
         $from = $request->get('from');
         $to = $request->get('to');
-        $year = $request->get('year');
+        $year = $request->get('year') ?? ($period === 'year' ? date('Y') : null);
         $salesChart = [];
 
         if ($year) {

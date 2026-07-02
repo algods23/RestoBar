@@ -32,7 +32,7 @@
                     <select id="yearSelect" class="form-select form-select-sm">
                         @for($i = 0; $i < 5; $i++)
                             @php $year = date('Y') - $i @endphp
-                            <option value="{{ $year }}" {{ request('year') == $year ? 'selected' : '' }}>{{ $year }}</option>
+                            <option value="{{ $year }}" {{ (request('year') == $year) || (request('period') == 'year' && $i == 0) ? 'selected' : '' }}>{{ $year }}</option>
                         @endfor
                     </select>
                 </div>
