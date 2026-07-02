@@ -101,10 +101,7 @@
                     <option value="delivery">Delivery</option>
                     <option value="mixed">Mixed</option>
                 </select>
-                <div class="form-check mt-2 mb-0">
-                    <input class="form-check-input" type="checkbox" name="vat_enabled" id="vatEnabled" value="1" checked>
-                    <label class="form-check-label small" for="vatEnabled">Apply 12% VAT</label>
-                </div>
+      
             </form>
 
             {{-- Cart Items (auto-height, no scroll) --}}
@@ -116,7 +113,6 @@
             <div id="cartTotals" class="border-top pt-1 mt-1" style="font-size: 12px;">
                 <div class="d-flex justify-content-between"><span>Subtotal</span><strong id="cart_subtotal">₱{{ number_format($totals['subtotal'], 2) }}</strong></div>
                 <div class="d-flex justify-content-between"><span>Discount</span><strong id="cart_discount">₱{{ number_format($totals['discount_amount'], 2) }}</strong></div>
-                <div class="d-flex justify-content-between"><span>VAT</span><strong id="cart_vat">₱{{ number_format($totals['vat_amount'], 2) }}</strong></div>
                 <div class="d-flex justify-content-between mt-1"><span><strong>Total</strong></span><strong id="cart_total" style="font-size: 14px;">₱{{ number_format($totals['total'], 2) }}</strong></div>
             </div>
 

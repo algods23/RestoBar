@@ -46,7 +46,8 @@
                     <th>Cashier</th>
                     <th>Method</th>
                     <th>Reference</th>
-                    <th class="text-end">Amount Received</th>
+                    <th class="text-end">Sales Amount</th>
+                    <th class="text-end">Tendered</th>
                 </tr>
             </thead>
             <tbody>
@@ -63,11 +64,17 @@
                         <td>{{ $payment->user?->name ?? '—' }}</td>
                         <td>{{ str_replace('_', ' ', ucfirst($payment->method)) }}</td>
                         <td>{{ $payment->reference ?: '—' }}</td>
-                        <td class="text-end fw-semibold">&#8369;{{ number_format($payment->amount, 2) }}</td>
+                        <td class="text-end fw-semibold">&#8369;{{ number_format($payment->sales_amount, 2) }}</td>
+                        <td class="text-end">
+                            &#8369;{{ number_format($payment->tendered_amount, 2) }}
+                            @if($payment->change_amount > 0)
+                                <div class="small text-muted">Change &#8369;{{ number_format($payment->change_amount, 2) }}</div>
+                            @endif
+                        </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="text-muted text-center py-4">No transactions recorded for this date.</td>
+                        <td colspan="7" class="text-muted text-center py-4">No transactions recorded for this date.</td>
                     </tr>
                 @endforelse
             </tbody>

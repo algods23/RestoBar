@@ -18,7 +18,7 @@ class OrderController extends Controller
     {
         $orders = Order::with(['user', 'tables'])
             ->when($request->filled('search'), fn ($query) => $query->where('customer_name', 'like', '%' . $request->string('search') . '%'))
-            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')), fn ($query) => $query->where('status', '!=', 'completed'))
+            ->when($request->filled('status'), fn ($query) => $query->where('status', $request->string('status')), fn ($query) => $query->where('status', '!=', Order::STATUS_COMPLETED))
             ->when($request->filled('order_type'), fn ($query) => $query->where('order_type', $request->string('order_type')))
             ->when($request->filled('from'), function ($query) use ($request) {
                 try {
@@ -72,9 +72,11 @@ class OrderController extends Controller
     {
         $order->load('items.product', 'user');
         $products = Product::where('status', 'available')->orderBy('name')->get();
-        $hasAdditionalItems = $order->items->contains(fn ($item) => (bool) $item->is_additional);
+        $originalItems = $order->items->where('is_additional', false);
+        $additionalItems = $order->items->where('is_additional', true);
+        $hasAdditionalItems = $additionalItems->isNotEmpty();
 
-        return view('orders.show', compact('order', 'products', 'hasAdditionalItems'));
+        return view('orders.show', compact('order', 'products', 'hasAdditionalItems', 'originalItems', 'additionalItems'));
     }
 
     public function update(Request $request, Order $order): RedirectResponse
@@ -110,12 +112,21 @@ class OrderController extends Controller
         }
 
         DB::transaction(function () use ($order, $request, $validated) {
+            $amountReceived = (float) $validated['amount'];
+            $saleAmount = (float) $order->total_amount;
+            $changeAmount = max(0, $amountReceived - $saleAmount);
+            $notes = trim((string) ($validated['notes'] ?? ''));
+
+            if ($changeAmount > 0) {
+                $notes = trim($notes . ' Tendered: ' . number_format($amountReceived, 2) . '; Change: ' . number_format($changeAmount, 2));
+            }
+
             $order->payments()->create([
                 'user_id' => $request->user()->id,
                 'method' => $validated['method'],
-                'amount' => $validated['amount'],
+                'amount' => $saleAmount,
                 'reference' => $validated['reference'] ?? null,
-                'notes' => $validated['notes'] ?? null,
+                'notes' => $notes !== '' ? $notes : null,
             ]);
 
             $order->update([

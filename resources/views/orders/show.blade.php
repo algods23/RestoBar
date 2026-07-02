@@ -24,68 +24,105 @@
         <div class="col-md-4"><strong>Status:</strong> {{ ucfirst($order->status) }}</div>
     </div>
 
-    <table class="table">
-        <thead><tr><th>Item</th><th>Type</th><th>Qty</th><th>Price</th><th>Subtotal</th>@if($order->status === 'pending')<th></th>@endif</tr></thead>
-        <tbody>
-            @foreach ($order->items as $item)
-                <tr>
-                    <td>{{ $item->product?->name }}</td>
-                    <td>{{ $item->item_type === 'dine_in' ? '🍽 Dine-in' : '🥡 Takeout' }}</td>
-                    <td>{{ $item->quantity }}</td>
-                    <td>₱{{ number_format($item->price, 2) }}</td>
-                    <td>₱{{ number_format($item->subtotal, 2) }}</td>
-                    @if($order->status === 'pending')
-                    <td class="text-end">
-                        <form action="{{ route('orders.items.remove', [$order, $item]) }}" method="POST" class="d-inline" onsubmit="return confirm('Remove this item? Stock will be restored.');">
-                            @csrf
-                            @method('DELETE')
-                            <button class="btn btn-sm btn-outline-danger">Remove</button>
-                        </form>
-                    </td>
-                    @endif
-                </tr>
-            @endforeach
-        </tbody>
-    </table>
+    @php
+        $typeLabel = fn ($type) => match ($type) {
+            'takeout' => 'Takeout',
+            'delivery' => 'Delivery',
+            default => 'Dine-in',
+        };
+        $tableColumns = $order->status === 'pending' ? 6 : 5;
+    @endphp
 
-    @if($order->status === 'pending')
-    <div class="card bg-light p-3 mb-4 border-0">
-        <h6 class="mb-2">Add Item to Order</h6>
-        <form action="{{ route('orders.items.add', $order) }}" method="POST" class="row g-2 align-items-end">
-            @csrf
-            <div class="col-md-5">
-                <label class="form-label small">Product</label>
-                <select name="product_id" class="form-select form-select-sm" required>
-                    <option value="">Select a product...</option>
-                    @foreach($products as $product)
-                        <option value="{{ $product->id }}">{{ $product->name }} (₱{{ $product->price }} | Stock: {{ $product->stock }})</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small">Type</label>
-                <select name="item_type" class="form-select form-select-sm" required>
-                    <option value="dine_in">Dine-in</option>
-                    <option value="takeout">Takeout</option>
-                    <option value="delivery">Delivery</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small">Quantity</label>
-                <input type="number" name="quantity" class="form-control form-control-sm" min="1" value="1" required>
-            </div>
-            <div class="col-md-2">
-                <button type="submit" class="btn btn-sm btn-dark w-100">Add Item</button>
-            </div>
-        </form>
+    <div class="mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h2 class="h6 mb-0 fw-bold">Original Order</h2>
+            <span class="small text-muted">&#8369;{{ number_format($originalItems->sum('subtotal'), 2) }}</span>
+        </div>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Type</th>
+                    <th>Qty</th>
+                    <th>Price</th>
+                    <th>Subtotal</th>
+                    @if($order->status === 'pending')<th></th>@endif
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($originalItems as $item)
+                    <tr>
+                        <td>{{ $item->product?->name }}</td>
+                        <td>{{ $typeLabel($item->item_type) }}</td>
+                        <td>{{ $item->quantity }}</td>
+                        <td>&#8369;{{ number_format($item->price, 2) }}</td>
+                        <td>&#8369;{{ number_format($item->subtotal, 2) }}</td>
+                        @if($order->status === 'pending')
+                            <td class="text-end">
+                                <form action="{{ route('orders.items.remove', [$order, $item]) }}" method="POST" class="d-inline" onsubmit="return confirm('Remove this item? Stock will be restored.');">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button class="btn btn-sm btn-outline-danger">Remove</button>
+                                </form>
+                            </td>
+                        @endif
+                    </tr>
+                @empty
+                    <tr><td colspan="{{ $tableColumns }}" class="text-muted">No original items.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
     </div>
+
+    @if($additionalItems->isNotEmpty())
+        <div class="border rounded p-3 mb-3 bg-light">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <h2 class="h6 mb-0 fw-bold text-primary">Additional Order</h2>
+                    <div class="small text-muted">Items added after the original order was created.</div>
+                </div>
+                <span class="small text-muted">&#8369;{{ number_format($additionalItems->sum('subtotal'), 2) }}</span>
+            </div>
+            <table class="table table-sm align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Type</th>
+                        <th>Qty</th>
+                        <th>Price</th>
+                        <th>Subtotal</th>
+                        @if($order->status === 'pending')<th></th>@endif
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($additionalItems as $item)
+                        <tr>
+                            <td><span class="badge bg-primary me-2">Add-on</span>{{ $item->product?->name }}</td>
+                            <td>{{ $typeLabel($item->item_type) }}</td>
+                            <td>{{ $item->quantity }}</td>
+                            <td>&#8369;{{ number_format($item->price, 2) }}</td>
+                            <td>&#8369;{{ number_format($item->subtotal, 2) }}</td>
+                            @if($order->status === 'pending')
+                                <td class="text-end">
+                                    <form action="{{ route('orders.items.remove', [$order, $item]) }}" method="POST" class="d-inline" onsubmit="return confirm('Remove this additional item? Stock will be restored.');">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="btn btn-sm btn-outline-danger">Remove</button>
+                                    </form>
+                                </td>
+                            @endif
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
     @endif
 
     <div class="ms-auto" style="max-width: 320px;">
-        <div class="d-flex justify-content-between"><span>Subtotal</span><strong>₱{{ number_format($order->subtotal, 2) }}</strong></div>
-        <div class="d-flex justify-content-between"><span>Discount</span><strong>₱{{ number_format($order->discount_amount, 2) }}</strong></div>
-        <div class="d-flex justify-content-between"><span>VAT</span><strong>₱{{ number_format($order->vat_amount, 2) }}</strong></div>
-        <div class="d-flex justify-content-between fs-5"><span>Total</span><strong>₱{{ number_format($order->total_amount, 2) }}</strong></div>
+        <div class="d-flex justify-content-between"><span>Subtotal</span><strong>&#8369;{{ number_format($order->subtotal, 2) }}</strong></div>
+        <div class="d-flex justify-content-between"><span>Discount</span><strong>&#8369;{{ number_format($order->discount_amount, 2) }}</strong></div>
+        <div class="d-flex justify-content-between"><span>VAT</span><strong>&#8369;{{ number_format($order->vat_amount, 2) }}</strong></div>
+        <div class="d-flex justify-content-between fs-5"><span>Total</span><strong>&#8369;{{ number_format($order->total_amount, 2) }}</strong></div>
     </div>
 </div>
 @include('orders.partials.payment-modal')

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-
 use App\Models\Payment;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -19,13 +18,21 @@ class TransactionController extends Controller
         $transactions = Payment::with(['order', 'user'])
             ->whereDate('created_at', $date)
             ->latest()
-            ->get();
+            ->get()
+            ->map(function ($payment) {
+                $orderTotal = $payment->order ? (float) $payment->order->total_amount : (float) $payment->amount;
+                $payment->sales_amount = min((float) $payment->amount, $orderTotal);
+                $payment->tendered_amount = (float) $payment->amount;
+                $payment->change_amount = max(0, (float) $payment->amount - $payment->sales_amount);
+
+                return $payment;
+            });
 
         $paymentTotals = $transactions
             ->groupBy('method')
-            ->map(fn ($payments) => $payments->sum('amount'));
+            ->map(fn ($payments) => $payments->sum('sales_amount'));
 
-        $salesTotal = $transactions->sum('amount');
+        $salesTotal = $transactions->sum('sales_amount');
 
         return view('transactions.index', [
             'date' => $date,

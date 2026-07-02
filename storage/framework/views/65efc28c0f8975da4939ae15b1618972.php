@@ -1,0 +1,83 @@
+
+
+<?php $__env->startSection('content'); ?>
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card p-3"><div class="text-muted">Sales Today</div><div class="h3 mb-0">₱<?php echo e(number_format($totalSalesToday, 2)); ?></div></div></div>
+    <div class="col-md-3"><div class="card p-3"><div class="text-muted">Orders Today</div><div class="h3 mb-0"><?php echo e($ordersToday); ?></div></div></div>
+    <div class="col-md-3"><div class="card p-3"><div class="text-muted">This Week</div><div class="h3 mb-0">₱<?php echo e(number_format($totalSalesThisWeek, 2)); ?></div></div></div>
+    <div class="col-md-3"><div class="card p-3"><div class="text-muted">This Month</div><div class="h3 mb-0">₱<?php echo e(number_format($totalSalesThisMonth, 2)); ?></div></div></div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3"><div class="card p-3"><div class="text-muted">Low Stock Items</div><div class="h3 mb-0"><?php echo e($lowStockProducts); ?></div></div></div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h5 mb-0">Sales Overview</h2>
+            </div>
+            <canvas id="salesChart" height="110"></canvas>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card p-3 h-100">
+            <h2 class="h5">Best Selling Items</h2>
+            <div class="list-group list-group-flush">
+                <?php $__currentLoopData = $bestSellingItems; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <div class="list-group-item d-flex justify-content-between">
+                        <span><?php echo e($item->product?->name); ?></span>
+                        <strong><?php echo e($item->total_quantity); ?></strong>
+                    </div>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card p-3 mt-3">
+    <h2 class="h5">Recent Orders</h2>
+    <div class="table-responsive">
+        <table class="table align-middle mb-0">
+            <thead>
+                <tr><th>ID</th><th>Type</th><th>Status</th><th>Total</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+                <?php $__currentLoopData = $recentOrders; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $order): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <tr>
+                        <td>#<?php echo e($order->id); ?></td>
+                        <td><?php echo e(str_replace('_', ' ', ucfirst($order->order_type))); ?></td>
+                        <td><?php echo e(ucfirst($order->status)); ?></td>
+                        <td>₱<?php echo e(number_format($order->total_amount, 2)); ?></td>
+                        <td><?php echo e($order->created_at->format('M d, Y h:i A')); ?></td>
+                    </tr>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+            </tbody>
+        </table>
+    </div>
+</div>
+<?php $__env->stopSection(); ?>
+
+<?php $__env->startPush('scripts'); ?>
+<script>
+const ctx = document.getElementById('salesChart');
+new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: <?php echo json_encode(array_keys($salesChart)); ?>,
+        datasets: [{
+            label: 'Sales',
+            data: <?php echo json_encode(array_values($salesChart)); ?>,
+            borderColor: '#111827',
+            backgroundColor: 'rgba(17,24,39,.12)',
+            tension: .35,
+            fill: true
+        }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } } }
+});
+</script>
+<?php $__env->stopPush(); ?>
+
+<?php echo $__env->make('layouts.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\laragon\www\RestoBar\resources\views/dashboard.blade.php ENDPATH**/ ?>

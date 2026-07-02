@@ -268,6 +268,10 @@ class PosController extends Controller
         });
 
         $amountPaid = isset($validated['amount_paid']) && $validated['amount_paid'] !== '' ? (float) $validated['amount_paid'] : 0;
+        if ($validated['payment_method'] !== 'cash' && $amountPaid <= 0) {
+            $amountPaid = (float) $totals['total'];
+        }
+
         if ($amountPaid > 0) {
             if ($validated['payment_method'] !== 'cash' && empty($validated['payment_reference'])) {
                 throw ValidationException::withMessages([
@@ -275,20 +279,23 @@ class PosController extends Controller
                 ]);
             }
 
-            // (amount calculation moved up)
-
-            if (false) {
+            if ($amountPaid < $totals['total']) {
                 throw ValidationException::withMessages([
                     'amount_paid' => 'Amount paid is less than order total.',
                 ]);
             }
 
+            $saleAmount = (float) $totals['total'];
+            $changeAmount = max(0, $amountPaid - $saleAmount);
+
             $order->payments()->create([
                 'user_id'   => $request->user()->id,
                 'method'    => $validated['payment_method'],
-                'amount'    => $amountPaid,
+                'amount'    => $saleAmount,
                 'reference' => $validated['payment_reference'] ?? null,
-                'notes'     => 'Paid at checkout',
+                'notes'     => $changeAmount > 0
+                    ? 'Paid at checkout. Tendered: ' . number_format($amountPaid, 2) . '; Change: ' . number_format($changeAmount, 2)
+                    : 'Paid at checkout',
             ]);
 
             if ($amountPaid >= $totals['total']) {
