@@ -18,17 +18,18 @@ class ReportController extends Controller
         $this->validateFilters($request);
         [$from, $to] = $this->dateRange($request);
         $reportType = $this->reportType($request);
+        $period = $this->period($request);
 
         return view('reports.index', [
             'reportType' => $reportType,
+            'period' => $period,
             'from' => $from,
             'to' => $to,
-            'summary' => $reportType === 'inventory'
-                ? $this->inventorySummary($from, $to)
-                : $this->salesSummary($from, $to),
-            'bestSellingItems' => $reportType === 'sales' ? $this->bestSellingItems($from, $to) : collect(),
-            'orders' => $reportType === 'sales' ? $this->salesOrders($from, $to)->limit(100)->get() : collect(),
-            'inventoryLogs' => $reportType === 'inventory' ? $this->inventoryLogs($from, $to)->limit(150)->get() : collect(),
+            'salesSummary' => $this->wantsSales($reportType) ? $this->salesSummary($from, $to) : null,
+            'inventorySummary' => $this->wantsInventory($reportType) ? $this->inventorySummary($from, $to) : null,
+            'bestSellingItems' => $this->wantsSales($reportType) ? $this->bestSellingItems($from, $to) : collect(),
+            'orders' => $this->wantsSales($reportType) ? $this->salesOrders($from, $to)->limit(100)->get() : collect(),
+            'inventoryLogs' => $this->wantsInventory($reportType) ? $this->inventoryLogs($from, $to)->limit(150)->get() : collect(),
         ]);
     }
 
@@ -37,20 +38,21 @@ class ReportController extends Controller
         $this->validateFilters($request);
         [$from, $to] = $this->dateRange($request);
         $reportType = $this->reportType($request);
+        $period = $this->period($request);
 
         $data = [
             'reportType' => $reportType,
+            'period' => $period,
             'from' => $from,
             'to' => $to,
-            'summary' => $reportType === 'inventory'
-                ? $this->inventorySummary($from, $to)
-                : $this->salesSummary($from, $to),
-            'bestSellingItems' => $reportType === 'sales' ? $this->bestSellingItems($from, $to) : collect(),
-            'orders' => $reportType === 'sales' ? $this->salesOrders($from, $to)->get() : collect(),
-            'inventoryLogs' => $reportType === 'inventory' ? $this->inventoryLogs($from, $to)->get() : collect(),
+            'salesSummary' => $this->wantsSales($reportType) ? $this->salesSummary($from, $to) : null,
+            'inventorySummary' => $this->wantsInventory($reportType) ? $this->inventorySummary($from, $to) : null,
+            'bestSellingItems' => $this->wantsSales($reportType) ? $this->bestSellingItems($from, $to) : collect(),
+            'orders' => $this->wantsSales($reportType) ? $this->salesOrders($from, $to)->get() : collect(),
+            'inventoryLogs' => $this->wantsInventory($reportType) ? $this->inventoryLogs($from, $to)->get() : collect(),
         ];
 
-        $filename = 'restobar-' . $reportType . '-report-' . $from->format('Ymd') . '-' . $to->format('Ymd') . '.xls';
+        $filename = 'restobar-' . $reportType . '-' . $period . '-report-' . $from->format('Ymd') . '-' . $to->format('Ymd') . '.xls';
 
         return Response::make(view('reports.excel', $data)->render(), 200, [
             'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
@@ -116,12 +118,19 @@ class ReportController extends Controller
 
     private function dateRange(Request $request): array
     {
-        $from = $request->filled('from')
-            ? Carbon::parse($request->string('from')->toString())->startOfDay()
-            : Carbon::today()->startOfDay();
-        $to = $request->filled('to')
-            ? Carbon::parse($request->string('to')->toString())->endOfDay()
-            : Carbon::today()->endOfDay();
+        [$from, $to] = match ($this->period($request)) {
+            'week' => [Carbon::now()->startOfWeek()->startOfDay(), Carbon::now()->endOfDay()],
+            'month' => [Carbon::now()->startOfMonth()->startOfDay(), Carbon::now()->endOfDay()],
+            'custom' => [
+                $request->filled('from')
+                    ? Carbon::parse($request->string('from')->toString())->startOfDay()
+                    : Carbon::today()->startOfDay(),
+                $request->filled('to')
+                    ? Carbon::parse($request->string('to')->toString())->endOfDay()
+                    : Carbon::today()->endOfDay(),
+            ],
+            default => [Carbon::today()->startOfDay(), Carbon::today()->endOfDay()],
+        };
 
         if ($from->greaterThan($to)) {
             [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
@@ -132,7 +141,31 @@ class ReportController extends Controller
 
     private function reportType(Request $request): string
     {
-        return $request->string('type')->toString() === 'inventory' ? 'inventory' : 'sales';
+        return match ($request->string('type')->toString()) {
+            'inventory' => 'inventory',
+            'both' => 'both',
+            default => 'sales',
+        };
+    }
+
+    private function period(Request $request): string
+    {
+        return match ($request->string('period')->toString()) {
+            'week' => 'week',
+            'month' => 'month',
+            'custom' => 'custom',
+            default => 'current',
+        };
+    }
+
+    private function wantsSales(string $reportType): bool
+    {
+        return in_array($reportType, ['sales', 'both'], true);
+    }
+
+    private function wantsInventory(string $reportType): bool
+    {
+        return in_array($reportType, ['inventory', 'both'], true);
     }
 
     private function validateFilters(Request $request): void
@@ -140,7 +173,8 @@ class ReportController extends Controller
         $request->validate([
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
-            'type' => ['nullable', 'in:sales,inventory'],
+            'type' => ['nullable', 'in:sales,inventory,both'],
+            'period' => ['nullable', 'in:current,week,month,custom'],
         ]);
     }
 }

@@ -2,8 +2,10 @@
 
 @section('content')
 @php
-    $isSales = $reportType === 'sales';
+    $showSales = in_array($reportType, ['sales', 'both'], true);
+    $showInventory = in_array($reportType, ['inventory', 'both'], true);
     $activeButton = fn ($type) => $reportType === $type ? 'btn-dark' : 'btn-outline-dark';
+    $activePeriod = fn ($value) => $period === $value ? 'btn-dark' : 'btn-outline-dark';
 @endphp
 
 <div class="d-flex flex-column flex-xl-row gap-3 justify-content-between align-items-xl-center mb-3">
@@ -12,7 +14,7 @@
         <div class="text-muted small">{{ $from->format('M d, Y') }} to {{ $to->format('M d, Y') }}</div>
     </div>
     <a
-        href="{{ route('reports.excel', ['type' => $reportType, 'from' => $from->toDateString(), 'to' => $to->toDateString()]) }}"
+        href="{{ route('reports.excel', ['type' => $reportType, 'period' => $period, 'from' => $from->toDateString(), 'to' => $to->toDateString()]) }}"
         class="btn btn-success"
     >
         Export Excel
@@ -21,6 +23,19 @@
 
 <div class="card p-3 mb-4">
     <form action="{{ route('reports.index') }}" method="GET" class="row g-2 align-items-end">
+        <input type="hidden" name="period" id="reportPeriod" value="{{ $period }}">
+        <input type="hidden" name="type" id="reportType" value="{{ $reportType }}">
+
+        <div class="col-12">
+            <label class="form-label fw-semibold d-block">Date Range</label>
+            <div class="btn-group flex-wrap" role="group" aria-label="Date range">
+                <button type="submit" name="period" value="current" class="btn {{ $activePeriod('current') }}">Current</button>
+                <button type="submit" name="period" value="week" class="btn {{ $activePeriod('week') }}">Week</button>
+                <button type="submit" name="period" value="month" class="btn {{ $activePeriod('month') }}">Month</button>
+                <button type="button" id="customPeriodBtn" class="btn {{ $activePeriod('custom') }}">Custom</button>
+            </div>
+        </div>
+
         <div class="col-md-3">
             <label class="form-label fw-semibold">From</label>
             <input type="date" name="from" class="form-control" value="{{ $from->toDateString() }}">
@@ -34,19 +49,20 @@
             <div class="btn-group w-100" role="group" aria-label="Report type">
                 <button type="submit" name="type" value="sales" class="btn {{ $activeButton('sales') }}">Sales</button>
                 <button type="submit" name="type" value="inventory" class="btn {{ $activeButton('inventory') }}">Inventory</button>
+                <button type="submit" name="type" value="both" class="btn {{ $activeButton('both') }}">Both</button>
             </div>
         </div>
         <div class="col-md-2">
-            <button type="submit" name="type" value="{{ $reportType }}" class="btn btn-primary w-100">Generate</button>
+            <button type="submit" class="btn btn-primary w-100">Generate</button>
         </div>
     </form>
 </div>
 
-@if($isSales)
+@if($showSales)
     <div class="row g-3 mb-4">
-        <div class="col-md-4"><div class="card p-3"><div class="text-muted">Total Sales</div><div class="h4 mb-0">&#8369;{{ number_format($summary['sales'], 2) }}</div></div></div>
-        <div class="col-md-4"><div class="card p-3"><div class="text-muted">Orders</div><div class="h4 mb-0">{{ number_format($summary['orders']) }}</div></div></div>
-        <div class="col-md-4"><div class="card p-3"><div class="text-muted">Subtotal</div><div class="h4 mb-0">&#8369;{{ number_format($summary['subtotal'], 2) }}</div></div></div>
+        <div class="col-md-4"><div class="card p-3"><div class="text-muted">Total Sales</div><div class="h4 mb-0">&#8369;{{ number_format($salesSummary['sales'], 2) }}</div></div></div>
+        <div class="col-md-4"><div class="card p-3"><div class="text-muted">Orders</div><div class="h4 mb-0">{{ number_format($salesSummary['orders']) }}</div></div></div>
+        <div class="col-md-4"><div class="card p-3"><div class="text-muted">Subtotal</div><div class="h4 mb-0">&#8369;{{ number_format($salesSummary['subtotal'], 2) }}</div></div></div>
     </div>
 
     <div class="card p-3 mb-4">
@@ -94,12 +110,14 @@
             </table>
         </div>
     </div>
-@else
+@endif
+
+@if($showInventory)
     <div class="row g-3 mb-4">
-        <div class="col-md-3"><div class="card p-3"><div class="text-muted">Logs</div><div class="h4 mb-0">{{ number_format($summary['logs']) }}</div></div></div>
-        <div class="col-md-3"><div class="card p-3"><div class="text-muted">Stock In</div><div class="h4 mb-0">{{ number_format($summary['stock_in']) }}</div></div></div>
-        <div class="col-md-3"><div class="card p-3"><div class="text-muted">Stock Out</div><div class="h4 mb-0">{{ number_format($summary['stock_out']) }}</div></div></div>
-        <div class="col-md-3"><div class="card p-3"><div class="text-muted">Adjustments</div><div class="h4 mb-0">{{ number_format($summary['adjustments']) }}</div></div></div>
+        <div class="col-md-3"><div class="card p-3"><div class="text-muted">Logs</div><div class="h4 mb-0">{{ number_format($inventorySummary['logs']) }}</div></div></div>
+        <div class="col-md-3"><div class="card p-3"><div class="text-muted">Stock In</div><div class="h4 mb-0">{{ number_format($inventorySummary['stock_in']) }}</div></div></div>
+        <div class="col-md-3"><div class="card p-3"><div class="text-muted">Stock Out</div><div class="h4 mb-0">{{ number_format($inventorySummary['stock_out']) }}</div></div></div>
+        <div class="col-md-3"><div class="card p-3"><div class="text-muted">Adjustments</div><div class="h4 mb-0">{{ number_format($inventorySummary['adjustments']) }}</div></div></div>
     </div>
 
     <div class="card p-3">
@@ -130,3 +148,19 @@
     </div>
 @endif
 @endsection
+
+@push('scripts')
+<script>
+    (function () {
+        const customBtn = document.getElementById('customPeriodBtn');
+        const periodInput = document.getElementById('reportPeriod');
+
+        if (customBtn && periodInput) {
+            customBtn.addEventListener('click', function () {
+                periodInput.value = 'custom';
+                customBtn.closest('form').submit();
+            });
+        }
+    })();
+</script>
+@endpush
