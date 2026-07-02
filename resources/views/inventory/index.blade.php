@@ -26,12 +26,12 @@
     }
 
     .inventory-product-table {
-        font-size: 0.84rem;
+        font-size: 0.75rem;
     }
 
     .inventory-product-table th,
     .inventory-product-table td {
-        padding: 0.42rem 0.55rem;
+        padding: 0.35rem 0.45rem;
     }
 
     .inventory-product-table .btn {
@@ -56,8 +56,8 @@
                 <form method="POST" action="{{ route('inventory.store') }}" id="stockAdjustmentForm">
                     @csrf
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Product</label>
-                        <select name="product_id" id="adjustProduct" class="form-select" required>
+                        <label class="form-label form-label-sm fw-semibold">Product</label>
+                        <select name="product_id" id="adjustProduct" class="form-select form-select-sm" required>
                             <option value="">Select a product...</option>
                             @foreach($adjustmentProducts as $product)
                                 <option value="{{ $product->id }}">{{ $product->name }} ({{ $product->stock }} in stock)</option>
@@ -67,24 +67,19 @@
 
                     <div class="row g-2">
                         <div class="col-sm-6">
-                            <label class="form-label fw-semibold">Type</label>
-                            <select name="type" class="form-select">
+                            <label class="form-label form-label-sm fw-semibold">Type</label>
+                            <select name="type" class="form-select form-select-sm">
                                 <option value="stock_in">Stock In</option>
                                 <option value="stock_out">Stock Out</option>
                             </select>
                         </div>
                         <div class="col-sm-6">
-                            <label class="form-label fw-semibold">Quantity</label>
-                            <input name="quantity" type="number" min="1" class="form-control" required>
+                            <label class="form-label form-label-sm fw-semibold">Quantity</label>
+                            <input name="quantity" type="number" min="1" class="form-control form-control-sm" required>
                         </div>
                     </div>
 
-                    <div class="my-3">
-                        <label class="form-label fw-semibold">Notes</label>
-                        <input name="notes" class="form-control" placeholder="Optional note">
-                    </div>
-
-                    <button class="btn btn-dark w-100">Save Adjustment</button>
+                    <button class="btn btn-dark w-100 mt-3">Save Adjustment</button>
                 </form>
             </div>
         </div>
