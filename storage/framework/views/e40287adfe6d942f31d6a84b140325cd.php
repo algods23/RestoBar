@@ -8,9 +8,9 @@
 
     <?php if($reportType === 'sales'): ?>
         <table border="1">
-            <tr><th>Total Sales</th><td><?php echo e(number_format($summary['sales'], 2, '.', '')); ?></td></tr>
-            <tr><th>Orders</th><td><?php echo e($summary['orders']); ?></td></tr>
-            <tr><th>Subtotal</th><td><?php echo e(number_format($summary['subtotal'], 2, '.', '')); ?></td></tr>
+            <tr><th>Total Sales</th><td><?php echo e(number_format($salesSummary['sales'], 2, '.', '')); ?></td></tr>
+            <tr><th>Orders</th><td><?php echo e($salesSummary['orders']); ?></td></tr>
+            <tr><th>Subtotal</th><td><?php echo e(number_format($salesSummary['subtotal'], 2, '.', '')); ?></td></tr>
         </table>
 
         <h3>Sales Details</h3>
@@ -42,10 +42,10 @@
         </table>
     <?php else: ?>
         <table border="1">
-            <tr><th>Logs</th><td><?php echo e($summary['logs']); ?></td></tr>
-            <tr><th>Stock In</th><td><?php echo e($summary['stock_in']); ?></td></tr>
-            <tr><th>Stock Out</th><td><?php echo e($summary['stock_out']); ?></td></tr>
-            <tr><th>Adjustments</th><td><?php echo e($summary['adjustments']); ?></td></tr>
+            <tr><th>Logs</th><td><?php echo e($inventorySummary['logs']); ?></td></tr>
+            <tr><th>Stock In</th><td><?php echo e($inventorySummary['stock_in']); ?></td></tr>
+            <tr><th>Stock Out</th><td><?php echo e($inventorySummary['stock_out']); ?></td></tr>
+            <tr><th>Adjustments</th><td><?php echo e($inventorySummary['adjustments']); ?></td></tr>
         </table>
 
         <h3>Inventory Details</h3>

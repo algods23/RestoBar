@@ -6,11 +6,12 @@
     <h2>RestoBar {{ ucfirst($reportType) }} Report</h2>
     <p>{{ $from->format('M d, Y') }} to {{ $to->format('M d, Y') }}</p>
 
-    @if($reportType === 'sales')
+    @if($reportType === 'sales' || $reportType === 'both')
+        <h3>Sales Summary</h3>
         <table border="1">
-            <tr><th>Total Sales</th><td>{{ number_format($summary['sales'], 2, '.', '') }}</td></tr>
-            <tr><th>Orders</th><td>{{ $summary['orders'] }}</td></tr>
-            <tr><th>Subtotal</th><td>{{ number_format($summary['subtotal'], 2, '.', '') }}</td></tr>
+            <tr><th>Total Sales</th><td>{{ number_format($salesSummary['sales'], 2, '.', '') }}</td></tr>
+            <tr><th>Orders</th><td>{{ $salesSummary['orders'] }}</td></tr>
+            <tr><th>Subtotal</th><td>{{ number_format($salesSummary['subtotal'], 2, '.', '') }}</td></tr>
         </table>
 
         <h3>Sales Details</h3>
@@ -40,12 +41,15 @@
                 </tr>
             @endforeach
         </table>
-    @else
+    @endif
+
+    @if($reportType === 'inventory' || $reportType === 'both')
+        <h3>Inventory Summary</h3>
         <table border="1">
-            <tr><th>Logs</th><td>{{ $summary['logs'] }}</td></tr>
-            <tr><th>Stock In</th><td>{{ $summary['stock_in'] }}</td></tr>
-            <tr><th>Stock Out</th><td>{{ $summary['stock_out'] }}</td></tr>
-            <tr><th>Adjustments</th><td>{{ $summary['adjustments'] }}</td></tr>
+            <tr><th>Logs</th><td>{{ $inventorySummary['logs'] }}</td></tr>
+            <tr><th>Stock In</th><td>{{ $inventorySummary['stock_in'] }}</td></tr>
+            <tr><th>Stock Out</th><td>{{ $inventorySummary['stock_out'] }}</td></tr>
+            <tr><th>Adjustments</th><td>{{ $inventorySummary['adjustments'] }}</td></tr>
         </table>
 
         <h3>Inventory Details</h3>
