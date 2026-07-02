@@ -6,12 +6,15 @@
     <h2>RestoBar {{ ucfirst($reportType) }} Report</h2>
     <p>{{ $from->format('M d, Y') }} to {{ $to->format('M d, Y') }}</p>
 
-    @if($reportType === 'sales' || $reportType === 'both')
+    @if($showSales)
         <h3>Sales Summary</h3>
         <table border="1">
             <tr><th>Total Sales</th><td>{{ number_format($salesSummary['sales'], 2, '.', '') }}</td></tr>
             <tr><th>Orders</th><td>{{ $salesSummary['orders'] }}</td></tr>
             <tr><th>Subtotal</th><td>{{ number_format($salesSummary['subtotal'], 2, '.', '') }}</td></tr>
+            <tr><th>Cash</th><td>{{ number_format($salesSummary['payment_totals']['cash'] ?? 0, 2, '.', '') }}</td></tr>
+            <tr><th>GCash</th><td>{{ number_format($salesSummary['payment_totals']['gcash'] ?? 0, 2, '.', '') }}</td></tr>
+            <tr><th>Card</th><td>{{ number_format($salesSummary['payment_totals']['card'] ?? 0, 2, '.', '') }}</td></tr>
         </table>
 
         <h3>Sales Details</h3>
@@ -43,7 +46,7 @@
         </table>
     @endif
 
-    @if($reportType === 'inventory' || $reportType === 'both')
+    @if($showInventory)
         <h3>Inventory Summary</h3>
         <table border="1">
             <tr><th>Logs</th><td>{{ $inventorySummary['logs'] }}</td></tr>

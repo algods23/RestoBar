@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Inventory;
+use App\Models\Payment;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -25,6 +26,8 @@ class ReportController extends Controller
             'period' => $period,
             'from' => $from,
             'to' => $to,
+            'showSales' => $this->wantsSales($reportType),
+            'showInventory' => $this->wantsInventory($reportType),
             'salesSummary' => $this->wantsSales($reportType) ? $this->salesSummary($from, $to) : null,
             'inventorySummary' => $this->wantsInventory($reportType) ? $this->inventorySummary($from, $to) : null,
             'bestSellingItems' => $this->wantsSales($reportType) ? $this->bestSellingItems($from, $to) : collect(),
@@ -45,6 +48,8 @@ class ReportController extends Controller
             'period' => $period,
             'from' => $from,
             'to' => $to,
+            'showSales' => $this->wantsSales($reportType),
+            'showInventory' => $this->wantsInventory($reportType),
             'salesSummary' => $this->wantsSales($reportType) ? $this->salesSummary($from, $to) : null,
             'inventorySummary' => $this->wantsInventory($reportType) ? $this->inventorySummary($from, $to) : null,
             'bestSellingItems' => $this->wantsSales($reportType) ? $this->bestSellingItems($from, $to) : collect(),
@@ -67,10 +72,21 @@ class ReportController extends Controller
             ->where('status', Order::STATUS_COMPLETED)
             ->whereBetween('created_at', [$from, $to]);
 
+        $paymentTotals = Payment::query()
+            ->whereBetween('created_at', [$from, $to])
+            ->whereHas('order', function ($query) {
+                $query->where('status', Order::STATUS_COMPLETED);
+            })
+            ->selectRaw('method, SUM(amount) as total_amount')
+            ->groupBy('method')
+            ->pluck('total_amount', 'method')
+            ->all();
+
         return [
             'orders' => (clone $orders)->count(),
             'sales' => (clone $orders)->sum('total_amount'),
             'subtotal' => (clone $orders)->sum('subtotal'),
+            'payment_totals' => $paymentTotals,
         ];
     }
 

@@ -6,11 +6,15 @@
     <h2>RestoBar <?php echo e(ucfirst($reportType)); ?> Report</h2>
     <p><?php echo e($from->format('M d, Y')); ?> to <?php echo e($to->format('M d, Y')); ?></p>
 
-    <?php if($reportType === 'sales'): ?>
+    <?php if($showSales): ?>
+        <h3>Sales Summary</h3>
         <table border="1">
             <tr><th>Total Sales</th><td><?php echo e(number_format($salesSummary['sales'], 2, '.', '')); ?></td></tr>
             <tr><th>Orders</th><td><?php echo e($salesSummary['orders']); ?></td></tr>
             <tr><th>Subtotal</th><td><?php echo e(number_format($salesSummary['subtotal'], 2, '.', '')); ?></td></tr>
+            <tr><th>Cash</th><td><?php echo e(number_format($salesSummary['payment_totals']['cash'] ?? 0, 2, '.', '')); ?></td></tr>
+            <tr><th>GCash</th><td><?php echo e(number_format($salesSummary['payment_totals']['gcash'] ?? 0, 2, '.', '')); ?></td></tr>
+            <tr><th>Card</th><td><?php echo e(number_format($salesSummary['payment_totals']['card'] ?? 0, 2, '.', '')); ?></td></tr>
         </table>
 
         <h3>Sales Details</h3>
@@ -40,7 +44,10 @@
                 </tr>
             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </table>
-    <?php else: ?>
+    <?php endif; ?>
+
+    <?php if($showInventory): ?>
+        <h3>Inventory Summary</h3>
         <table border="1">
             <tr><th>Logs</th><td><?php echo e($inventorySummary['logs']); ?></td></tr>
             <tr><th>Stock In</th><td><?php echo e($inventorySummary['stock_in']); ?></td></tr>

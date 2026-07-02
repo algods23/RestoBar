@@ -1,7 +1,5 @@
 <?php $__env->startSection('content'); ?>
 <?php
-    $showSales = in_array($reportType, ['sales', 'both'], true);
-    $showInventory = in_array($reportType, ['inventory', 'both'], true);
     $activeButton = fn ($type) => $reportType === $type ? 'btn-dark' : 'btn-outline-dark';
     $activePeriod = fn ($value) => $period === $value ? 'btn-dark' : 'btn-outline-dark';
 ?>
@@ -61,6 +59,15 @@
         <div class="col-md-4"><div class="card p-3"><div class="text-muted">Total Sales</div><div class="h4 mb-0">&#8369;<?php echo e(number_format($salesSummary['sales'], 2)); ?></div></div></div>
         <div class="col-md-4"><div class="card p-3"><div class="text-muted">Orders</div><div class="h4 mb-0"><?php echo e(number_format($salesSummary['orders'])); ?></div></div></div>
         <div class="col-md-4"><div class="card p-3"><div class="text-muted">Subtotal</div><div class="h4 mb-0">&#8369;<?php echo e(number_format($salesSummary['subtotal'], 2)); ?></div></div></div>
+    </div>
+
+    <div class="card p-3 mb-4">
+        <h2 class="h5 mb-3">Payment Breakdown</h2>
+        <div class="row g-3">
+            <div class="col-md-4"><div class="border rounded p-3"><div class="text-muted">Cash</div><div class="h5 mb-0">&#8369;<?php echo e(number_format($salesSummary['payment_totals']['cash'] ?? 0, 2)); ?></div></div></div>
+            <div class="col-md-4"><div class="border rounded p-3"><div class="text-muted">GCash</div><div class="h5 mb-0">&#8369;<?php echo e(number_format($salesSummary['payment_totals']['gcash'] ?? 0, 2)); ?></div></div></div>
+            <div class="col-md-4"><div class="border rounded p-3"><div class="text-muted">Card</div><div class="h5 mb-0">&#8369;<?php echo e(number_format($salesSummary['payment_totals']['card'] ?? 0, 2)); ?></div></div></div>
+        </div>
     </div>
 
     <div class="card p-3 mb-4">
