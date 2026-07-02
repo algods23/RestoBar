@@ -36,6 +36,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/pos/cart/items', [PosController::class, 'removeCartItem'])->name('pos.cart.remove');
     Route::delete('/pos/cart', [PosController::class, 'clearCart'])->name('pos.cart.clear');
     Route::post('/pos/checkout', [PosController::class, 'checkout'])->name('pos.checkout');
+    Route::post('/pos/add-to-order', [PosController::class, 'addToExistingOrder'])->name('pos.add_to_order');
+    Route::get('/pos/occupied-tables', [PosController::class, 'occupiedTables'])->name('pos.occupied_tables');
     Route::get('/orders/{order}/receipt', [PosController::class, 'receipt'])->name('orders.receipt');
     Route::get('/orders/{order}/kitchen-receipt', [PosController::class, 'kitchenReceipt'])->name('orders.kitchen_receipt');
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');

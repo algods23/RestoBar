@@ -335,6 +335,119 @@ class PosController extends Controller
         ]);
     }
 
+    /**
+     * Return occupied tables with their current order info (for Add-to-Order modal).
+     */
+    public function occupiedTables(): JsonResponse
+    {
+        $tables = Table::where('is_occupied', true)
+            ->whereNotNull('current_order_id')
+            ->with(['currentOrder' => fn ($q) => $q->where('status', 'pending')])
+            ->orderBy('number')
+            ->get()
+            ->filter(fn ($t) => $t->currentOrder !== null)
+            ->map(fn ($t) => [
+                'number'        => $t->number,
+                'order_id'      => $t->currentOrder->id,
+                'customer_name' => $t->currentOrder->customer_name,
+                'order_total'   => number_format($t->currentOrder->total_amount, 2),
+                'items_count'   => $t->currentOrder->items()->count(),
+            ])
+            ->values();
+
+        return response()->json($tables);
+    }
+
+    /**
+     * Add current cart items as add-ons to an existing order (selected by table).
+     */
+    public function addToExistingOrder(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'table_number' => ['required', 'integer'],
+        ]);
+
+        $cart = $this->cart();
+
+        if ($cart === []) {
+            return response()->json(['success' => false, 'message' => 'Cart is empty.'], 422);
+        }
+
+        $table = Table::where('number', $validated['table_number'])
+            ->where('is_occupied', true)
+            ->whereNotNull('current_order_id')
+            ->first();
+
+        if (!$table || !$table->currentOrder || $table->currentOrder->status !== 'pending') {
+            return response()->json(['success' => false, 'message' => 'No active order found for this table.'], 422);
+        }
+
+        $order = $table->currentOrder;
+
+        DB::transaction(function () use ($order, $cart, $request) {
+            foreach ($cart as $cartItem) {
+                $product = Product::lockForUpdate()->findOrFail($cartItem['product_id']);
+
+                if ($product->stock < $cartItem['quantity']) {
+                    throw ValidationException::withMessages([
+                        'cart' => "Stock for {$product->name} is no longer sufficient.",
+                    ]);
+                }
+
+                $lineSubtotal = $cartItem['price'] * $cartItem['quantity'];
+
+                OrderItem::create([
+                    'order_id'      => $order->id,
+                    'product_id'    => $product->id,
+                    'quantity'      => $cartItem['quantity'],
+                    'price'         => $cartItem['price'],
+                    'subtotal'      => $lineSubtotal,
+                    'item_type'     => $cartItem['item_type'] ?? 'dine_in',
+                    'is_additional' => true,
+                ]);
+
+                $previousStock = $product->stock;
+                $product->decrement('stock', $cartItem['quantity']);
+                $product->refresh();
+
+                if ($product->stock <= 0) {
+                    $product->update(['status' => 'out_of_stock']);
+                }
+
+                Inventory::create([
+                    'product_id'     => $product->id,
+                    'user_id'        => $request->user()->id,
+                    'order_id'       => $order->id,
+                    'type'           => 'deduction',
+                    'quantity'       => $cartItem['quantity'],
+                    'previous_stock' => $previousStock,
+                    'new_stock'      => $product->stock,
+                    'notes'          => 'Add-on to order #' . $order->id,
+                ]);
+            }
+
+            // Recalculate order totals
+            $subtotal = $order->items()->sum('subtotal');
+            $discountAmount = $order->discount_amount;
+            $vatAmount = $order->vat_amount > 0 ? round(($subtotal - $discountAmount) * 0.12, 2) : 0;
+            $total = max(0, round($subtotal - $discountAmount + $vatAmount, 2));
+
+            $order->update([
+                'subtotal'     => $subtotal,
+                'vat_amount'   => $vatAmount,
+                'total_amount' => $total,
+            ]);
+        });
+
+        $request->session()->forget('pos_cart');
+
+        return response()->json([
+            'success'             => true,
+            'message'             => 'Items added to Order #' . $order->id,
+            'kitchen_receipt_url' => route('orders.kitchen_receipt', ['order' => $order, 'additional' => 1]),
+        ]);
+    }
+
     private function cart(): array
     {
         return session()->get('pos_cart', []);

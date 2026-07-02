@@ -120,9 +120,12 @@
                 <div class="d-flex justify-content-between mt-1"><span><strong>Total</strong></span><strong id="cart_total" style="font-size: 14px;">₱{{ number_format($totals['total'], 2) }}</strong></div>
             </div>
 
-            <div class="mt-2">
-                <button type="button" id="checkoutBtn" class="btn btn-success w-100">
+            <div class="mt-2 d-flex gap-2">
+                <button type="button" id="checkoutBtn" class="btn btn-success flex-grow-1">
                     Checkout
+                </button>
+                <button type="button" id="addToOrderBtn" class="btn btn-warning flex-grow-1" title="Add items to an existing table order">
+                    ➕ Add to Order
                 </button>
             </div>
         </div>
@@ -189,7 +192,49 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" id="confirmCheckoutBtn" class="btn btn-success px-4">Place Order</button>
+                <button type="button" id="savePendingOrderBtn" class="btn btn-primary px-4">Save (Pay Later)</button>
+                <button type="button" id="confirmCheckoutBtn" class="btn btn-success px-4">Pay & Complete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Add to Existing Order Modal --}}
+<div class="modal fade" id="addToOrderModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning bg-opacity-25">
+                <h5 class="modal-title">➕ Add to Existing Order</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-2">Select the table to add the current cart items to their existing order:</p>
+                <div id="occupiedTablesList" class="mb-3">
+                    <div class="text-center text-muted py-3">Loading tables...</div>
+                </div>
+                {{-- Selected table info --}}
+                <div id="addToOrderDetails" class="border rounded p-3 bg-light" style="display:none">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div>
+                            <strong id="addOrder_table" class="fs-5"></strong>
+                            <span class="text-muted ms-2" id="addOrder_customer"></span>
+                        </div>
+                        <span class="badge bg-primary" id="addOrder_orderId"></span>
+                    </div>
+                    <div class="small text-muted mb-2">
+                        Current total: <strong id="addOrder_currentTotal"></strong>
+                        &nbsp;|&nbsp; Items: <strong id="addOrder_itemsCount"></strong>
+                    </div>
+                    <hr class="my-2">
+                    <div class="small fw-semibold mb-1">Items to add (from cart):</div>
+                    <div id="addOrder_cartSummary" class="small"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" id="confirmAddToOrderBtn" class="btn btn-warning px-4" disabled>
+                    Add Items to Order
+                </button>
             </div>
         </div>
     </div>
@@ -727,6 +772,119 @@ document.getElementById('confirmCheckoutBtn').addEventListener('click', async ()
         alert('An error occurred during checkout. Please try again.');
         btn.disabled = false;
         updateConfirmButtonText();
+    }
+});
+
+// ── Add to Existing Order ──────────────────────────────────────────────────────
+let selectedAddOrderTable = null;
+
+document.getElementById('addToOrderBtn').addEventListener('click', async () => {
+    const items = window.lastCartPayload?.items ?? [];
+    if (!items.length) {
+        alert('Cart is empty.');
+        return;
+    }
+
+    const modalEl = document.getElementById('addToOrderModal');
+    const bsModal = new bootstrap.Modal(modalEl);
+    bsModal.show();
+
+    const listEl = document.getElementById('occupiedTablesList');
+    const detailsEl = document.getElementById('addToOrderDetails');
+    const confirmBtn = document.getElementById('confirmAddToOrderBtn');
+    
+    listEl.innerHTML = '<div class="text-center text-muted py-3">Loading tables...</div>';
+    detailsEl.style.display = 'none';
+    confirmBtn.disabled = true;
+    selectedAddOrderTable = null;
+
+    try {
+        const res = await fetch(`{{ route('pos.occupied_tables') }}`);
+        if (!res.ok) throw new Error('Failed to fetch tables');
+        const tables = await res.json();
+
+        if (tables.length === 0) {
+            listEl.innerHTML = '<div class="text-center text-muted py-3">No occupied tables with active orders.</div>';
+            return;
+        }
+
+        let html = '<div class="d-flex flex-wrap gap-2">';
+        tables.forEach(t => {
+            html += `<button type="button" class="btn btn-outline-danger add-order-table-btn" data-number="${t.number}" data-info='${JSON.stringify(t)}'>T${t.number}</button>`;
+        });
+        html += '</div>';
+        listEl.innerHTML = html;
+
+        listEl.querySelectorAll('.add-order-table-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                listEl.querySelectorAll('.add-order-table-btn').forEach(b => {
+                    b.classList.remove('btn-danger', 'text-white');
+                    b.classList.add('btn-outline-danger');
+                });
+                this.classList.remove('btn-outline-danger');
+                this.classList.add('btn-danger', 'text-white');
+
+                const info = JSON.parse(this.dataset.info);
+                selectedAddOrderTable = info.number;
+
+                document.getElementById('addOrder_table').textContent = 'Table ' + info.number;
+                document.getElementById('addOrder_customer').textContent = info.customer_name ? `(${info.customer_name})` : '';
+                document.getElementById('addOrder_orderId').textContent = 'Order #' + info.order_id;
+                document.getElementById('addOrder_currentTotal').textContent = '₱' + info.order_total;
+                document.getElementById('addOrder_itemsCount').textContent = info.items_count;
+
+                const cartItemsHtml = items.map(i => `<div>${i.quantity}x ${i.name}</div>`).join('');
+                document.getElementById('addOrder_cartSummary').innerHTML = cartItemsHtml;
+
+                detailsEl.style.display = 'block';
+                confirmBtn.disabled = false;
+            });
+        });
+
+    } catch (err) {
+        listEl.innerHTML = '<div class="text-center text-danger py-3">Error loading tables.</div>';
+    }
+});
+
+document.getElementById('confirmAddToOrderBtn').addEventListener('click', async () => {
+    if (!selectedAddOrderTable) return;
+    
+    const btn = document.getElementById('confirmAddToOrderBtn');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+
+    try {
+        const res = await fetch(`{{ route('pos.add_to_order') }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrf,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ table_number: selectedAddOrderTable })
+        });
+        const data = await res.json();
+        
+        if (res.ok && data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('addToOrderModal')).hide();
+            
+            // Clear cart UI
+            cartItemsEl.innerHTML = '<div class="text-muted small py-2">Cart is empty.</div>';
+            window.lastCartPayload = null;
+            updateTotals();
+
+            if (data.kitchen_receipt_url) {
+                window.open(data.kitchen_receipt_url, 'additional_kitchen_receipt', 'width=400,height=600');
+            }
+            showToast(data.message || 'Items added to order successfully.');
+        } else {
+            alert(data.message || 'Failed to add items to order.');
+        }
+    } catch (err) {
+        alert('An error occurred. Please try again.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Add Items to Order';
     }
 });
 
