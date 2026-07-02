@@ -1,9 +1,9 @@
-@extends('layouts.app')
-@section('content')
+
+<?php $__env->startSection('content'); ?>
 <div class="row g-3">
-    {{-- LEFT: Products --}}
+    
     <div class="col-lg-8">
-        {{-- Search Bar --}}
+        
         <div class="card p-3 mb-3">
             <div class="row g-2 align-items-end">
                 <div class="col-md-4">
@@ -17,50 +17,51 @@
                 </div>
             </div>
         </div>
-        {{-- Category Filter --}}
+        
         <div class="card px-3 pt-3 pb-2 mb-3">
             <div class="d-flex flex-wrap gap-2">
                 <button class="btn btn-sm btn-dark category-filter active" data-category="all">All</button>
-                @foreach($categories as $category)
-                    <button class="btn btn-sm btn-outline-dark category-filter" data-category="{{ $category->id }}">
-                        {{ $category->name }}
+                <?php $__currentLoopData = $categories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $category): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <button class="btn btn-sm btn-outline-dark category-filter" data-category="<?php echo e($category->id); ?>">
+                        <?php echo e($category->name); ?>
+
                     </button>
-                @endforeach
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </div>
         </div>
-        {{-- Product Grid --}}
+        
         <div class="card p-3">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h2 class="h5 mb-0">Products</h2>
                 <span class="text-muted small">Click a card to add to cart</span>
             </div>
             <div id="productGrid" class="row g-3">
-                @foreach($products as $product)
-                    <div class="col-md-4 col-xl-3 product-card-wrapper" data-category="{{ $product->category_id }}">
+                <?php $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <div class="col-md-4 col-xl-3 product-card-wrapper" data-category="<?php echo e($product->category_id); ?>">
                         <button class="btn btn-light border w-100 text-start add-product-card h-100 position-relative"
-                            data-id="{{ $product->id }}"
-                            data-stock="{{ $product->stock }}"
-                            {{ $product->stock <= 0 ? 'disabled' : '' }}>
-                            @if($product->stock <= 0)
+                            data-id="<?php echo e($product->id); ?>"
+                            data-stock="<?php echo e($product->stock); ?>"
+                            <?php echo e($product->stock <= 0 ? 'disabled' : ''); ?>>
+                            <?php if($product->stock <= 0): ?>
                                 <span class="badge bg-danger position-absolute top-0 end-0 m-1">Out of Stock</span>
-                            @elseif($product->stock <= 5)
+                            <?php elseif($product->stock <= 5): ?>
                                 <span class="badge bg-warning text-dark position-absolute top-0 end-0 m-1">Low Stock</span>
-                            @endif
-                            <img src="{{ $product->imageUrl() }}" alt="{{ $product->name }}"
+                            <?php endif; ?>
+                            <img src="<?php echo e($product->imageUrl()); ?>" alt="<?php echo e($product->name); ?>"
                                 class="w-100 rounded mb-2" style="height: 140px; object-fit: cover;">
-                            <div class="fw-semibold text-dark text-truncate">{{ $product->name }}</div>
-                            <div class="small text-muted text-truncate">{{ $product->category?->name }}</div>
-                            <div class="small text-muted">Stock: {{ $product->stock }}</div>
-                            <div class="fw-bold text-success">₱{{ number_format($product->price, 2) }}</div>
+                            <div class="fw-semibold text-dark text-truncate"><?php echo e($product->name); ?></div>
+                            <div class="small text-muted text-truncate"><?php echo e($product->category?->name); ?></div>
+                            <div class="small text-muted">Stock: <?php echo e($product->stock); ?></div>
+                            <div class="fw-bold text-success">₱<?php echo e(number_format($product->price, 2)); ?></div>
                         </button>
                     </div>
-                @endforeach
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </div>
             <div id="searchResults" class="mt-3 row g-2"></div>
         </div>
     </div>
 
-    {{-- RIGHT: Cart --}}
+    
     <div class="col-lg-4">
         <div class="card sticky-top" style="top: 88px; padding: 10px 12px;">
             <div class="d-flex align-items-center justify-content-between mb-1">
@@ -70,30 +71,31 @@
                 </button>
             </div>
 
-            {{-- Customer Name --}}
+            
             <div class="mb-1">
                 <input type="text" id="customerName" class="form-control form-control-sm" placeholder="Customer name (optional)">
             </div>
 
-            {{-- Table Selection --}}
+            
             <div class="mb-1">
                 <div class="d-flex flex-wrap gap-1" id="tableGrid">
-                    @foreach($tables as $table)
+                    <?php $__currentLoopData = $tables; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $table): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <button type="button"
-                            class="btn btn-xs table-btn py-0 px-1 {{ $table->is_occupied ? 'btn-danger disabled' : 'btn-outline-secondary' }}"
-                            data-table="{{ $table->number }}"
+                            class="btn btn-xs table-btn py-0 px-1 <?php echo e($table->is_occupied ? 'btn-danger disabled' : 'btn-outline-secondary'); ?>"
+                            data-table="<?php echo e($table->number); ?>"
                             style="font-size: 11px; line-height: 1.6;"
-                            {{ $table->is_occupied ? 'disabled' : '' }}>
-                            T{{ $table->number }}
+                            <?php echo e($table->is_occupied ? 'disabled' : ''); ?>>
+                            T<?php echo e($table->number); ?>
+
                         </button>
-                    @endforeach
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                 </div>
                 <div class="text-muted" style="font-size: 11px;">Selected: <span id="selectedTablesDisplay">None</span></div>
             </div>
 
-            {{-- Order Setup --}}
+            
             <form id="checkoutForm" class="border rounded p-2 mb-2 bg-light">
-                @csrf
+                <?php echo csrf_field(); ?>
                 <label class="form-label mb-1 small fw-semibold">Order Type</label>
                 <select name="order_type" id="orderTypeSelect" class="form-select form-select-sm">
                     <option value="dine_in">Dine-in</option>
@@ -107,17 +109,17 @@
                 </div>
             </form>
 
-            {{-- Cart Items (auto-height, no scroll) --}}
+            
             <div id="cartItems">
-                @include('pos.partials.cart-items', ['cart' => $cart])
+                <?php echo $__env->make('pos.partials.cart-items', ['cart' => $cart], \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?>
             </div>
 
-            {{-- Cart Totals --}}
+            
             <div id="cartTotals" class="border-top pt-1 mt-1" style="font-size: 12px;">
-                <div class="d-flex justify-content-between"><span>Subtotal</span><strong id="cart_subtotal">₱{{ number_format($totals['subtotal'], 2) }}</strong></div>
-                <div class="d-flex justify-content-between"><span>Discount</span><strong id="cart_discount">₱{{ number_format($totals['discount_amount'], 2) }}</strong></div>
-                <div class="d-flex justify-content-between"><span>VAT</span><strong id="cart_vat">₱{{ number_format($totals['vat_amount'], 2) }}</strong></div>
-                <div class="d-flex justify-content-between mt-1"><span><strong>Total</strong></span><strong id="cart_total" style="font-size: 14px;">₱{{ number_format($totals['total'], 2) }}</strong></div>
+                <div class="d-flex justify-content-between"><span>Subtotal</span><strong id="cart_subtotal">₱<?php echo e(number_format($totals['subtotal'], 2)); ?></strong></div>
+                <div class="d-flex justify-content-between"><span>Discount</span><strong id="cart_discount">₱<?php echo e(number_format($totals['discount_amount'], 2)); ?></strong></div>
+                <div class="d-flex justify-content-between"><span>VAT</span><strong id="cart_vat">₱<?php echo e(number_format($totals['vat_amount'], 2)); ?></strong></div>
+                <div class="d-flex justify-content-between mt-1"><span><strong>Total</strong></span><strong id="cart_total" style="font-size: 14px;">₱<?php echo e(number_format($totals['total'], 2)); ?></strong></div>
             </div>
 
             <div class="mt-2">
@@ -130,7 +132,7 @@
     </div>
 </div>
 
-{{-- Checkout Confirmation Modal --}}
+
 <div class="modal fade" id="checkoutModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -149,7 +151,7 @@
                     <tr class="table-success"><td><strong>Total</strong></td><td id="modal_total" class="fw-bold fs-5">—</td></tr>
                 </table>
 
-                {{-- Mixed order breakdown --}}
+                
                 <div id="modal_type_breakdown" class="mb-3" style="display:none">
                     <div class="small fw-semibold text-muted mb-1">Items by Type:</div>
                     <div id="modal_dine_in_items" class="small text-muted"></div>
@@ -174,13 +176,13 @@
                             </select>
                         </div>
                     </div>
-                    {{-- Amount Paid (cash only) --}}
+                    
                     <div class="mb-2" id="amountPaidRow">
                         <label class="form-label">Amount Paid (₱)</label>
                         <input type="number" step="0.01" name="amount_paid" id="amountPaidInput" class="form-control" min="0" placeholder="0.00">
                         <div class="form-text">Change: <strong class="text-success">₱<span id="changeDisplay">0.00</span></strong></div>
                     </div>
-                    {{-- Reference (non-cash) --}}
+                    
                     <div class="mb-2" id="referenceRow" style="display:none">
                         <label class="form-label">Reference No.</label>
                         <input type="text" name="payment_reference" id="paymentReference" class="form-control" placeholder="Transaction reference">
@@ -195,7 +197,7 @@
     </div>
 </div>
 
-{{-- Stock Warning Toast --}}
+
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index:9999">
     <div id="stockToast" class="toast align-items-center text-bg-warning border-0" role="alert">
         <div class="d-flex">
@@ -204,9 +206,9 @@
         </div>
     </div>
 </div>
-@endsection
+<?php $__env->stopSection(); ?>
 
-@push('scripts')
+<?php $__env->startPush('scripts'); ?>
 <script>
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
 const cartItemsEl = document.getElementById('cartItems');
@@ -214,7 +216,7 @@ const productGrid  = document.getElementById('productGrid');
 const searchResults = document.getElementById('searchResults');
 
 // Seed lastCartPayload from server-rendered cart so checkout modal works on fresh load
-window.lastCartPayload = @json(['items' => array_values($cart), 'totals' => $totals]);
+window.lastCartPayload = <?php echo json_encode(['items' => array_values($cart), 'totals' => $totals], 512) ?>;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function money(v) { return '₱' + Number(v).toFixed(2); }
@@ -305,7 +307,7 @@ async function setAllCartItemTypes(newType) {
         const oldType = item.item_type ?? 'dine_in';
         if (oldType === newType) continue;
 
-        const payload = await postJson(`{{ route('pos.cart.update') }}`, {
+        const payload = await postJson(`<?php echo e(route('pos.cart.update')); ?>`, {
             product_id: item.product_id,
             item_type: oldType,
             new_item_type: newType,
@@ -454,7 +456,7 @@ async function searchProducts() {
     const barcodeEl = document.getElementById('barcodeInput');
     const searchEl = document.getElementById('searchInput');
     const query = (barcodeEl?.value || searchEl?.value || '');
-    const res = await fetch(`{{ route('pos.search') }}?query=${encodeURIComponent(query)}`, {
+    const res = await fetch(`<?php echo e(route('pos.search')); ?>?query=${encodeURIComponent(query)}`, {
         headers: { 'Accept': 'application/json' }
     });
     const products = await res.json();
@@ -505,7 +507,7 @@ async function addToCart(productId, stock, itemType = null) {
         showToast(`Only ${stock} in stock — cannot add more.`);
         return;
     }
-    const payload = await postJson(`{{ route('pos.cart.add') }}`, { product_id: productId, quantity: 1, item_type: itemType });
+    const payload = await postJson(`<?php echo e(route('pos.cart.add')); ?>`, { product_id: productId, quantity: 1, item_type: itemType });
     renderCart(payload);
 }
 
@@ -534,7 +536,7 @@ cartItemsEl.addEventListener('change', async e => {
             e.target.value = stock;
             return;
         }
-        const payload = await postJson(`{{ route('pos.cart.update') }}`, {
+        const payload = await postJson(`<?php echo e(route('pos.cart.update')); ?>`, {
             product_id: e.target.dataset.id,
             item_type:  e.target.dataset.type,
             quantity:   qty
@@ -550,7 +552,7 @@ cartItemsEl.addEventListener('change', async e => {
         // Find quantity of this row from payload
         const items   = window.lastCartPayload?.items ?? [];
         const rowItem = items.find(i => String(i.product_id) === e.target.dataset.id && i.item_type === oldType);
-        const payload = await postJson(`{{ route('pos.cart.update') }}`, {
+        const payload = await postJson(`<?php echo e(route('pos.cart.update')); ?>`, {
             product_id:    e.target.dataset.id,
             item_type:     oldType,
             new_item_type: newType,
@@ -563,7 +565,7 @@ cartItemsEl.addEventListener('change', async e => {
 cartItemsEl.addEventListener('click', async e => {
     if (!e.target.classList.contains('remove-item')) return;
     e.preventDefault();
-    const payload = await postJson(`{{ route('pos.cart.remove') }}`, {
+    const payload = await postJson(`<?php echo e(route('pos.cart.remove')); ?>`, {
         product_id: e.target.dataset.id,
         item_type:  e.target.dataset.type
     }, 'DELETE');
@@ -585,7 +587,7 @@ const clearCartBtn = document.getElementById('clearCartBtn');
 if (clearCartBtn) {
     clearCartBtn.addEventListener('click', async () => {
         if (!confirm('Are you sure you want to clear all items from the cart?')) return;
-        const payload = await postJson(`{{ route('pos.cart.clear') }}`, {}, 'DELETE');
+        const payload = await postJson(`<?php echo e(route('pos.cart.clear')); ?>`, {}, 'DELETE');
         renderCart(payload);
     });
 }
@@ -693,7 +695,7 @@ document.getElementById('confirmCheckoutBtn').addEventListener('click', async ()
         payload.payment_reference = document.getElementById('paymentReference')?.value || null;
         payload.pay_now           = 1;
 
-        const res = await fetch(`{{ route('pos.checkout') }}`, {
+        const res = await fetch(`<?php echo e(route('pos.checkout')); ?>`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -737,6 +739,8 @@ window.addEventListener('pageshow', function (event) {
     }
 });
 </script>
-@endpush
+<?php $__env->stopPush(); ?>
 
 
+
+<?php echo $__env->make('layouts.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\laragon\www\RestoBar\resources\views/pos/index.blade.php ENDPATH**/ ?>

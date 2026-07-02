@@ -9,6 +9,7 @@ use App\Http\Controllers\PosController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TableController;
+use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -37,6 +38,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/pos/checkout', [PosController::class, 'checkout'])->name('pos.checkout');
     Route::get('/orders/{order}/receipt', [PosController::class, 'receipt'])->name('orders.receipt');
     Route::get('/orders/{order}/kitchen-receipt', [PosController::class, 'kitchenReceipt'])->name('orders.kitchen_receipt');
+    Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
 
     Route::get('/orders/archived', [OrderController::class, 'archived'])->name('orders.archived');
     Route::get('/orders', [OrderController::class, 'index'])->name('orders.index');

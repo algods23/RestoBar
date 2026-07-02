@@ -5,11 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\OrderItem;
-use App\Models\Payment;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Table;
-use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,27 +30,13 @@ class PosController extends Controller
             ->orderBy('name')
             ->get();
         $tables = Table::orderBy('number')->get();
-        $today = Carbon::today();
-        $todayTransactions = Payment::with(['order', 'user'])
-            ->whereDate('created_at', $today)
-            ->latest()
-            ->get();
-        $todayPaymentTotals = $todayTransactions
-            ->groupBy('method')
-            ->map(fn ($payments) => $payments->sum('amount'));
-        $todaySalesTotal = Order::where('status', Order::STATUS_COMPLETED)
-            ->whereDate('created_at', $today)
-            ->sum('total_amount');
 
         return view('pos.index', [
-            'cart'                => $cart,
-            'products'            => $products,
-            'categories'          => $categories,
-            'tables'              => $tables,
-            'totals'              => $this->totals($cart),
-            'todayTransactions'   => $todayTransactions,
-            'todayPaymentTotals'  => $todayPaymentTotals,
-            'todaySalesTotal'     => $todaySalesTotal,
+            'cart'       => $cart,
+            'products'   => $products,
+            'categories' => $categories,
+            'tables'     => $tables,
+            'totals'     => $this->totals($cart),
         ]);
     }
 
