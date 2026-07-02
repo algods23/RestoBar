@@ -207,7 +207,7 @@
                                     </td>
                                     <td class="text-end">
                                         <div class="btn-group btn-group-sm" role="group" aria-label="{{ $product->name }} actions">
-                                            <a href="{{ route('products.edit', $product) }}" class="btn btn-outline-secondary">Edit</a>
+                                            <a href="{{ route('products.edit', $product) }}" class="btn btn-outline-secondary">Update</a>
                                             <button
                                                 type="button"
                                                 class="btn btn-outline-dark"

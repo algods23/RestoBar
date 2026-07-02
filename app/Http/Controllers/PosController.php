@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Inventory;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Payment;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Table;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,13 +32,27 @@ class PosController extends Controller
             ->orderBy('name')
             ->get();
         $tables = Table::orderBy('number')->get();
+        $today = Carbon::today();
+        $todayTransactions = Payment::with(['order', 'user'])
+            ->whereDate('created_at', $today)
+            ->latest()
+            ->get();
+        $todayPaymentTotals = $todayTransactions
+            ->groupBy('method')
+            ->map(fn ($payments) => $payments->sum('amount'));
+        $todaySalesTotal = Order::where('status', Order::STATUS_COMPLETED)
+            ->whereDate('created_at', $today)
+            ->sum('total_amount');
 
         return view('pos.index', [
-            'cart'       => $cart,
-            'products'   => $products,
-            'categories' => $categories,
-            'tables'     => $tables,
-            'totals'     => $this->totals($cart),
+            'cart'                => $cart,
+            'products'            => $products,
+            'categories'          => $categories,
+            'tables'              => $tables,
+            'totals'              => $this->totals($cart),
+            'todayTransactions'   => $todayTransactions,
+            'todayPaymentTotals'  => $todayPaymentTotals,
+            'todaySalesTotal'     => $todaySalesTotal,
         ]);
     }
 
@@ -67,7 +83,7 @@ class PosController extends Controller
         $validated = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
             'quantity'   => ['nullable', 'integer', 'min:1'],
-            'item_type'  => ['nullable', 'in:dine_in,takeout'],
+            'item_type'  => ['nullable', 'in:dine_in,takeout,delivery'],
         ]);
 
         $product  = Product::findOrFail($validated['product_id']);
@@ -106,8 +122,8 @@ class PosController extends Controller
     {
         $validated = $request->validate([
             'product_id'    => ['required', 'exists:products,id'],
-            'item_type'     => ['nullable', 'in:dine_in,takeout'],
-            'new_item_type' => ['nullable', 'in:dine_in,takeout'],
+            'item_type'     => ['nullable', 'in:dine_in,takeout,delivery'],
+            'new_item_type' => ['nullable', 'in:dine_in,takeout,delivery'],
             'quantity'      => ['required', 'integer', 'min:0'],
         ]);
 
@@ -156,7 +172,7 @@ class PosController extends Controller
     {
         $validated = $request->validate([
             'product_id' => ['required', 'exists:products,id'],
-            'item_type'  => ['nullable', 'in:dine_in,takeout'],
+            'item_type'  => ['nullable', 'in:dine_in,takeout,delivery'],
         ]);
 
         $itemType = $validated['item_type'] ?? 'dine_in';
@@ -240,7 +256,8 @@ class PosController extends Controller
                     'quantity'   => $cartItem['quantity'],
                     'price'      => $cartItem['price'],
                     'subtotal'   => $lineSubtotal,
-                    'item_type'  => $cartItem['item_type'] ?? 'dine_in',
+                    'item_type'  => $validated['order_type'] === 'delivery' ? 'delivery' : ($cartItem['item_type'] ?? 'dine_in'),
+                    'is_additional' => false,
                 ]);
 
                 $previousStock = $product->stock;
@@ -315,11 +332,23 @@ class PosController extends Controller
         return view('pos.receipt', compact('order'));
     }
 
-    public function kitchenReceipt(Order $order): View
+    public function kitchenReceipt(Request $request, Order $order): View
     {
-        $order->load('items.product', 'tables');
+        $order->load([
+            'items' => function ($query) use ($request) {
+                $query->with('product');
 
-        return view('pos.kitchen_receipt', compact('order'));
+                if ($request->boolean('additional')) {
+                    $query->where('is_additional', true);
+                }
+            },
+            'tables',
+        ]);
+
+        return view('pos.kitchen_receipt', [
+            'order' => $order,
+            'additionalOnly' => $request->boolean('additional'),
+        ]);
     }
 
     private function cart(): array

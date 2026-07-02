@@ -38,7 +38,7 @@
                     <td>{{ $product->stock }}</td>
                     <td>{{ ucfirst($product->status) }}</td>
                     <td class="text-end">
-                        <a href="{{ route('products.edit', $product) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        <a href="{{ route('products.edit', $product) }}" class="btn btn-sm btn-outline-secondary">Update</a>
                         <form method="POST" action="{{ route('products.destroy', $product) }}" class="d-inline">
                             @csrf @method('DELETE')
                             <button class="btn btn-sm btn-outline-danger">Delete</button>

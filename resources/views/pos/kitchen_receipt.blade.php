@@ -34,7 +34,7 @@
 </style>
 
 <div class="receipt">
-    <h2>KITCHEN ORDER</h2>
+    <h2>{{ !empty($additionalOnly) ? 'ADDITIONAL ORDER' : 'KITCHEN ORDER' }}</h2>
     
     <div class="meta">
         <div>Order #: {{ $order->id }}</div>
@@ -50,6 +50,7 @@
     @php
         $dineItems = $order->items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'dine_in');
         $takeItems = $order->items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'takeout');
+        $deliveryItems = $order->items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'delivery');
     @endphp
 
     @if($dineItems->count())
@@ -80,6 +81,27 @@
                 @endforeach
             </tbody>
         </table>
+    @endif
+
+    @if($deliveryItems->count())
+        <div class="section-label">DELIVERY</div>
+        <table>
+            <thead><tr><th>Qty</th><th>Item</th></tr></thead>
+            <tbody>
+                @foreach($deliveryItems as $item)
+                    <tr>
+                        <td class="qty">{{ $item->quantity }}x</td>
+                        <td>{{ $item->product?->name ?? 'N/A' }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+
+    @if($order->items->isEmpty())
+        <div class="footer">
+            No additional items to print.
+        </div>
     @endif
 
     <div class="footer">

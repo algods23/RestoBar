@@ -72,8 +72,9 @@ class OrderController extends Controller
     {
         $order->load('items.product', 'user');
         $products = Product::where('status', 'available')->orderBy('name')->get();
+        $hasAdditionalItems = $order->items->contains(fn ($item) => (bool) $item->is_additional);
 
-        return view('orders.show', compact('order', 'products'));
+        return view('orders.show', compact('order', 'products', 'hasAdditionalItems'));
     }
 
     public function update(Request $request, Order $order): RedirectResponse
@@ -102,6 +103,12 @@ class OrderController extends Controller
             'notes' => ['nullable', 'string', 'max:255'],
         ]);
 
+        if ((float) $validated['amount'] < (float) $order->total_amount) {
+            throw ValidationException::withMessages([
+                'amount' => 'Amount received is less than the order total.',
+            ]);
+        }
+
         DB::transaction(function () use ($order, $request, $validated) {
             $order->payments()->create([
                 'user_id' => $request->user()->id,
@@ -111,7 +118,10 @@ class OrderController extends Controller
                 'notes' => $validated['notes'] ?? null,
             ]);
 
-            $order->update(['status' => Order::STATUS_COMPLETED]);
+            $order->update([
+                'status' => Order::STATUS_COMPLETED,
+                'payment_method' => $validated['method'],
+            ]);
             $order->releaseTables();
         });
 
@@ -127,7 +137,7 @@ class OrderController extends Controller
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
             'quantity'   => 'required|integer|min:1',
-            'item_type'  => 'required|in:dine_in,takeout',
+            'item_type'  => 'required|in:dine_in,takeout,delivery',
         ]);
 
         DB::transaction(function () use ($validated, $order, $request) {
@@ -153,6 +163,7 @@ class OrderController extends Controller
                 'price'      => $product->price,
                 'subtotal'   => $product->price * $validated['quantity'],
                 'item_type'  => $validated['item_type'],
+                'is_additional' => true,
             ]);
 
             Inventory::create([
@@ -169,7 +180,9 @@ class OrderController extends Controller
             $this->recalculateOrder($order);
         });
 
-        return back()->with('success', 'Item added to order.');
+        return back()
+            ->with('success', 'Item added to order.')
+            ->with('additional_kitchen_receipt_url', route('orders.kitchen_receipt', ['order' => $order, 'additional' => 1]));
     }
 
     public function removeItem(Order $order, OrderItem $item): RedirectResponse

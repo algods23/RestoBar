@@ -16,7 +16,7 @@
                     <td>{{ $category->description }}</td>
                     <td>{{ $category->products_count }}</td>
                     <td class="text-end">
-                        <a href="{{ route('categories.edit', $category) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        <a href="{{ route('categories.edit', $category) }}" class="btn btn-sm btn-outline-secondary">Update</a>
                         <form method="POST" action="{{ route('categories.destroy', $category) }}" class="d-inline">
                             @csrf @method('DELETE')
                             <button class="btn btn-sm btn-outline-danger">Delete</button>

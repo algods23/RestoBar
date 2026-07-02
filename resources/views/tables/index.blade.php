@@ -39,7 +39,7 @@
                         @endif
                     </td>
                     <td class="text-end">
-                        <a href="{{ route('tables.edit', $table) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                        <a href="{{ route('tables.edit', $table) }}" class="btn btn-sm btn-outline-secondary">Update</a>
                         <form method="POST" action="{{ route('tables.destroy', $table) }}" class="d-inline">
                             @csrf @method('DELETE')
                             <button class="btn btn-sm btn-outline-danger" {{ $table->is_occupied ? 'disabled' : '' }}>Delete</button>

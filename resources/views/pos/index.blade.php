@@ -91,6 +91,22 @@
                 <div class="text-muted" style="font-size: 11px;">Selected: <span id="selectedTablesDisplay">None</span></div>
             </div>
 
+            {{-- Order Setup --}}
+            <form id="checkoutForm" class="border rounded p-2 mb-2 bg-light">
+                @csrf
+                <label class="form-label mb-1 small fw-semibold">Order Type</label>
+                <select name="order_type" id="orderTypeSelect" class="form-select form-select-sm">
+                    <option value="dine_in">Dine-in</option>
+                    <option value="takeout">Takeout</option>
+                    <option value="delivery">Delivery</option>
+                    <option value="mixed">Mixed</option>
+                </select>
+                <div class="form-check mt-2 mb-0">
+                    <input class="form-check-input" type="checkbox" name="vat_enabled" id="vatEnabled" value="1" checked>
+                    <label class="form-check-label small" for="vatEnabled">Apply 12% VAT</label>
+                </div>
+            </form>
+
             {{-- Cart Items (auto-height, no scroll) --}}
             <div id="cartItems">
                 @include('pos.partials.cart-items', ['cart' => $cart])
@@ -104,28 +120,47 @@
                 <div class="d-flex justify-content-between mt-1"><span><strong>Total</strong></span><strong id="cart_total" style="font-size: 14px;">₱{{ number_format($totals['total'], 2) }}</strong></div>
             </div>
 
-            {{-- Checkout Form --}}
-            <form id="checkoutForm" class="mt-1">
-                @csrf
-                <div class="row g-1 mb-1 align-items-center">
-                    <div class="col-4"><label class="form-label mb-0 small fw-semibold">Order Type</label></div>
-                    <div class="col-8">
-                        <select name="order_type" id="orderTypeSelect" class="form-select form-select-sm">
-                            <option value="dine_in">Dine-in</option>
-                            <option value="takeout">Takeout</option>
-                            <option value="mixed">Mixed</option>
-                            <option value="delivery">Delivery</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="form-check mb-1">
-                    <input class="form-check-input" type="checkbox" name="vat_enabled" id="vatEnabled" value="1" checked>
-                    <label class="form-check-label small" for="vatEnabled">Apply 12% VAT</label>
-                </div>
+            <div class="mt-2">
                 <button type="button" id="checkoutBtn" class="btn btn-success w-100">
                     Checkout
                 </button>
-            </form>
+            </div>
+        </div>
+
+        <div class="card p-3 mt-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h2 class="h6 mb-0 fw-bold">Today's Transactions</h2>
+                <strong>&#8369;{{ number_format($todaySalesTotal, 2) }}</strong>
+            </div>
+            <div class="row g-2 mb-3">
+                @foreach(['cash' => 'Cash', 'card' => 'Card', 'gcash' => 'GCash', 'bank_transfer' => 'Bank'] as $method => $label)
+                    <div class="col-6">
+                        <div class="border rounded p-2 h-100">
+                            <div class="small text-muted">{{ $label }}</div>
+                            <div class="fw-semibold">&#8369;{{ number_format($todayPaymentTotals->get($method, 0), 2) }}</div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            <div class="table-responsive" style="max-height: 260px; overflow:auto;">
+                <table class="table table-sm align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>Time</th><th>Order</th><th>Method</th><th class="text-end">Received</th></tr>
+                    </thead>
+                    <tbody>
+                        @forelse($todayTransactions as $payment)
+                            <tr>
+                                <td class="small">{{ $payment->created_at->format('h:i A') }}</td>
+                                <td class="small">#{{ $payment->order_id }}</td>
+                                <td class="small">{{ str_replace('_', ' ', ucfirst($payment->method)) }}</td>
+                                <td class="text-end small">&#8369;{{ number_format($payment->amount, 2) }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="4" class="text-muted small">No payments recorded today.</td></tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
@@ -224,6 +259,15 @@ function showToast(msg) {
     bootstrap.Toast.getOrCreateInstance(document.getElementById('stockToast')).show();
 }
 
+function orderTypeLabel(type) {
+    return {
+        dine_in: 'Dine-in',
+        takeout: 'Takeout',
+        delivery: 'Delivery',
+        mixed: 'Mixed',
+    }[type] || 'Dine-in';
+}
+
 async function postJson(url, data, method = 'POST') {
     const res = await fetch(url, {
         method,
@@ -279,10 +323,34 @@ function autoSetOrderType() {
     if (types.size === 0) return;
     if (types.size > 1) {
         sel.value = 'mixed';
+    } else if (types.has('delivery')) {
+        sel.value = 'delivery';
     } else if (types.has('takeout')) {
         sel.value = 'takeout';
     } else {
         sel.value = 'dine_in';
+    }
+}
+
+async function setAllCartItemTypes(newType) {
+    if (newType === 'mixed') return;
+
+    const items = [...(window.lastCartPayload?.items ?? [])];
+    for (const item of items) {
+        const oldType = item.item_type ?? 'dine_in';
+        if (oldType === newType) continue;
+
+        const payload = await postJson(`{{ route('pos.cart.update') }}`, {
+            product_id: item.product_id,
+            item_type: oldType,
+            new_item_type: newType,
+            quantity: item.quantity
+        }, 'PATCH');
+        window.lastCartPayload = payload;
+    }
+
+    if (window.lastCartPayload) {
+        renderCart(window.lastCartPayload);
     }
 }
 
@@ -326,8 +394,9 @@ function renderCart(payload) {
                                 <select class="form-select form-select-sm item-type-select"
                                     data-id="${item.product_id}"
                                     data-type="${item.item_type ?? 'dine_in'}">
-                                    <option value="dine_in" ${(item.item_type ?? 'dine_in') === 'dine_in' ? 'selected' : ''}>🍽 Dine-in</option>
-                                    <option value="takeout" ${(item.item_type ?? 'dine_in') === 'takeout' ? 'selected' : ''}>🥡 Takeout</option>
+                                    <option value="dine_in" ${(item.item_type ?? 'dine_in') === 'dine_in' ? 'selected' : ''}>Dine-in</option>
+                                    <option value="takeout" ${(item.item_type ?? 'dine_in') === 'takeout' ? 'selected' : ''}>Takeout</option>
+                                    <option value="delivery" ${(item.item_type ?? 'dine_in') === 'delivery' ? 'selected' : ''}>Delivery</option>
                                 </select>
                             </td>
                             <td>
@@ -457,7 +526,11 @@ if (searchEl) {
 }
 
 // ── Add to Cart ───────────────────────────────────────────────────────────────
-async function addToCart(productId, stock, itemType = 'dine_in') {
+async function addToCart(productId, stock, itemType = null) {
+    itemType = itemType || (document.getElementById('orderTypeSelect')?.value === 'mixed'
+        ? 'dine_in'
+        : (document.getElementById('orderTypeSelect')?.value || 'dine_in'));
+
     // Check total qty in cart for this product across all types
     const items = window.lastCartPayload?.items ?? [];
     const totalInCart = items
@@ -533,6 +606,16 @@ cartItemsEl.addEventListener('click', async e => {
 });
 
 // ── Clear Cart ───────────────────────────────────────────────────────────────
+document.getElementById('orderTypeSelect').addEventListener('change', async e => {
+    const type = e.target.value;
+    if (type === 'mixed') {
+        autoSetOrderType();
+        return;
+    }
+
+    await setAllCartItemTypes(type);
+});
+
 const clearCartBtn = document.getElementById('clearCartBtn');
 if (clearCartBtn) {
     clearCartBtn.addEventListener('click', async () => {
@@ -600,7 +683,7 @@ document.getElementById('checkoutBtn').addEventListener('click', () => {
     document.getElementById('modal_tables').textContent =
         selectedTables.length ? selectedTables.map(t => 'T' + t).join(', ') : '—';
     document.getElementById('modal_type').textContent =
-        orderType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        orderTypeLabel(orderType);
     document.getElementById('modal_subtotal').textContent = money(calc.subtotal);
     document.getElementById('modal_discount').textContent = money(calc.discount);
     document.getElementById('modal_vat').textContent      = money(calc.vat);
@@ -635,6 +718,7 @@ document.getElementById('confirmCheckoutBtn').addEventListener('click', async ()
         const formData = new FormData(document.getElementById('checkoutForm'));
         const payload  = Object.fromEntries(formData.entries());
         payload.vat_enabled   = formData.get('vat_enabled') ? 1 : 0;
+        payload.discount_amount = document.getElementById('discountInput')?.value || 0;
         payload.customer_name = document.getElementById('customerName').value;
         payload.tables        = selectedTables;
         
@@ -689,3 +773,5 @@ window.addEventListener('pageshow', function (event) {
 });
 </script>
 @endpush
+
+
