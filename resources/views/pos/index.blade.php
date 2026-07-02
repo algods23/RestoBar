@@ -112,7 +112,7 @@
             {{-- Cart Totals --}}
             <div id="cartTotals" class="border-top pt-1 mt-1" style="font-size: 12px;">
                 <div class="d-flex justify-content-between"><span>Subtotal</span><strong id="cart_subtotal">₱{{ number_format($totals['subtotal'], 2) }}</strong></div>
-                <div class="d-flex justify-content-between"><span>Discount</span><strong id="cart_discount">₱{{ number_format($totals['discount_amount'], 2) }}</strong></div>
+                <div class="d-flex justify-content-between"><span>Discount <small id="cart_discount_percent" class="text-muted">(0%)</small></span><strong id="cart_discount">₱{{ number_format($totals['discount_amount'], 2) }}</strong></div>
                 <div class="d-flex justify-content-between mt-1"><span><strong>Total</strong></span><strong id="cart_total" style="font-size: 14px;">₱{{ number_format($totals['total'], 2) }}</strong></div>
             </div>
 
@@ -144,7 +144,6 @@
                     <tr><td class="text-muted">Order Type</td><td id="modal_type" class="fw-semibold">—</td></tr>
                     <tr><td class="text-muted">Subtotal</td><td id="modal_subtotal" class="fw-semibold">—</td></tr>
                     <tr><td class="text-muted">Discount</td><td id="modal_discount" class="fw-semibold">—</td></tr>
-                    <tr><td class="text-muted">VAT</td><td id="modal_vat" class="fw-semibold">—</td></tr>
                     <tr class="table-success"><td><strong>Total</strong></td><td id="modal_total" class="fw-bold fs-5">—</td></tr>
                 </table>
 
@@ -160,8 +159,8 @@
                     <h6 class="fw-bold mb-3">Payment Details</h6>
                     <div class="row g-2 mb-2">
                         <div class="col-6">
-                            <label class="form-label">Discount (₱)</label>
-                            <input type="number" step="0.01" name="discount_amount" id="discountInput" class="form-control" value="0" min="0">
+                            <label class="form-label">Discount (%)</label>
+                            <input type="number" step="0.01" name="discount_percentage" id="discountInput" class="form-control" value="0" min="0" max="100">
                         </div>
                         <div class="col-6">
                             <label class="form-label">Payment Method</label>
@@ -423,11 +422,10 @@ function renderCart(payload) {
 function getCalcTotals() {
     const payload  = window.lastCartPayload || { totals: { subtotal: 0 } };
     const subtotal = Number(payload.totals?.subtotal || 0);
-    const discount = Math.max(0, Number(document.getElementById('discountInput')?.value || 0));
-    const vatEnabled = document.getElementById('vatEnabled')?.checked ?? true;
-    const vat  = vatEnabled ? Math.round(Math.max(0, subtotal - discount) * 0.12 * 100) / 100 : 0;
-    const total = Math.max(0, Math.round((subtotal - discount + vat) * 100) / 100);
-    return { subtotal, discount, vat, total };
+    const discountPercent = Math.min(100, Math.max(0, Number(document.getElementById('discountInput')?.value || 0)));
+    const discount = Math.round(subtotal * (discountPercent / 100) * 100) / 100;
+    const total = Math.max(0, Math.round((subtotal - discount) * 100) / 100);
+    return { subtotal, discountPercent, discount, total };
 }
 
 function updateTotals() {
@@ -435,8 +433,9 @@ function updateTotals() {
     const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = money(val); };
     set('cart_subtotal', calc.subtotal);
     set('cart_discount', calc.discount);
-    set('cart_vat', calc.vat);
     set('cart_total', calc.total);
+    const discountPercentEl = document.getElementById('cart_discount_percent');
+    if (discountPercentEl) discountPercentEl.textContent = `(${calc.discountPercent.toFixed(2).replace(/\.?0+$/, '')}%)`;
     updateChange();
 }
 
@@ -449,14 +448,12 @@ function updateChange() {
 }
 
 const discountInputEl = document.getElementById('discountInput');
-const vatEnabledEl    = document.getElementById('vatEnabled');
 
 function refreshModalSummary() {
     const calc = getCalcTotals();
     const el = (id) => document.getElementById(id);
-    if (el('modal_discount')) el('modal_discount').textContent = money(calc.discount);
+    if (el('modal_discount')) el('modal_discount').textContent = `${calc.discountPercent.toFixed(2).replace(/\.?0+$/, '')}% (${money(calc.discount)})`;
     if (el('modal_subtotal')) el('modal_subtotal').textContent = money(calc.subtotal);
-    if (el('modal_vat'))      el('modal_vat').textContent      = money(calc.vat);
     if (el('modal_total'))    el('modal_total').textContent    = money(calc.total);
     // Recompute change display
     const paid   = Number(el('amountPaidInput')?.value || 0);
@@ -466,7 +463,6 @@ function refreshModalSummary() {
 }
 
 if (discountInputEl) discountInputEl.addEventListener('input', () => { updateTotals(); refreshModalSummary(); });
-if (vatEnabledEl)    vatEnabledEl.addEventListener('change',   () => { updateTotals(); refreshModalSummary(); });
 
 // ── Search ────────────────────────────────────────────────────────────────────
 function productCard(p) {
@@ -690,8 +686,7 @@ document.getElementById('checkoutBtn').addEventListener('click', () => {
     document.getElementById('modal_type').textContent =
         orderTypeLabel(orderType);
     document.getElementById('modal_subtotal').textContent = money(calc.subtotal);
-    document.getElementById('modal_discount').textContent = money(calc.discount);
-    document.getElementById('modal_vat').textContent      = money(calc.vat);
+    document.getElementById('modal_discount').textContent = `${calc.discountPercent.toFixed(2).replace(/\.?0+$/, '')}% (${money(calc.discount)})`;
     document.getElementById('modal_total').textContent    = money(calc.total);
 
     // Mixed order breakdown — use item_type stored server-side in each cart item
@@ -723,8 +718,7 @@ document.getElementById('confirmCheckoutBtn').addEventListener('click', async ()
     try {
         const formData = new FormData(document.getElementById('checkoutForm'));
         const payload  = Object.fromEntries(formData.entries());
-        payload.vat_enabled   = formData.get('vat_enabled') ? 1 : 0;
-        payload.discount_amount = document.getElementById('discountInput')?.value || 0;
+        payload.discount_percentage = document.getElementById('discountInput')?.value || 0;
         payload.customer_name = document.getElementById('customerName').value;
         payload.tables        = selectedTables;
         

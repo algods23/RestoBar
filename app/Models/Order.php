@@ -18,6 +18,7 @@ class Order extends Model
         'order_type',
         'subtotal',
         'discount_amount',
+        'discount_percentage',
         'vat_amount',
         'total_amount',
         'status',
@@ -29,6 +30,7 @@ class Order extends Model
     protected $casts = [
         'subtotal' => 'decimal:2',
         'discount_amount' => 'decimal:2',
+        'discount_percentage' => 'decimal:2',
         'vat_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
     ];

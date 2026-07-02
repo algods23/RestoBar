@@ -237,20 +237,15 @@ class OrderController extends Controller
     private function recalculateOrder(Order $order): void
     {
         $subtotal = $order->items()->sum('subtotal');
-        // Vat is 12% of subtotal - discount
-        // But do we know if vat is enabled for this order?
-        // Wait, the order has a vat_amount. If it was > 0, we can recalculate it.
-        // Let's assume VAT is enabled if it originally had VAT, or we just recalculate based on subtotal.
-        // Actually, let's keep discount as is.
-        $discountAmount = $order->discount_amount;
-        $vatAmount = $order->vat_amount > 0 ? round(($subtotal - $discountAmount) * 0.12, 2) : 0;
-        $total = max(0, round($subtotal - $discountAmount + $vatAmount, 2));
+        $discountPercentage = (float) $order->discount_percentage;
+        $discountAmount = round($subtotal * ($discountPercentage / 100), 2);
+        $total = max(0, round($subtotal - $discountAmount, 2));
 
         $order->update([
-            'subtotal'     => $subtotal,
-            'vat_amount'   => $vatAmount,
-            'total_amount' => $total,
-            // Re-evaluate order type if needed? Keep it mixed or unchanged for now.
+            'subtotal'        => $subtotal,
+            'discount_amount' => $discountAmount,
+            'vat_amount'      => 0,
+            'total_amount'    => $total,
         ]);
     }
 }

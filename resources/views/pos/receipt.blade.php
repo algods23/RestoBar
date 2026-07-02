@@ -229,12 +229,8 @@
             <span>PHP {{ number_format($order->subtotal, 2) }}</span>
         </div>
         <div class="summary-row">
-            <span>Discount</span>
+            <span>Discount ({{ number_format($order->discount_percentage, 2) }}%)</span>
             <span>PHP {{ number_format($order->discount_amount, 2) }}</span>
-        </div>
-        <div class="summary-row">
-            <span>VAT (12%)</span>
-            <span>PHP {{ number_format($order->vat_amount, 2) }}</span>
         </div>
         <hr class="dashed">
         <div class="summary-row total">

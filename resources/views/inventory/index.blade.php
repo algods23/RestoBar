@@ -70,6 +70,8 @@
                     <table class="table table-sm align-middle mb-0">
                         <thead class="table-light">
                             <tr>
+                                <th>Date/Time</th>
+                                <th>User</th>
                                 <th>Product</th>
                                 <th>Type</th>
                                 <th class="text-end">Qty</th>
@@ -79,6 +81,8 @@
                         <tbody>
                             @forelse ($logs as $log)
                                 <tr>
+                                    <td class="small text-muted text-nowrap">{{ $log->created_at?->format('M d, Y h:i A') }}</td>
+                                    <td class="text-truncate" style="max-width: 120px;">{{ $log->user?->name ?? 'N/A' }}</td>
                                     <td class="text-truncate" style="max-width: 140px;">{{ $log->product?->name }}</td>
                                     <td><span class="badge text-bg-light border">{{ str_replace('_', ' ', $log->type) }}</span></td>
                                     <td class="text-end">{{ $log->quantity }}</td>
@@ -86,7 +90,7 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted py-3">No stock activity yet.</td>
+                                    <td colspan="6" class="text-center text-muted py-3">No stock activity yet.</td>
                                 </tr>
                             @endforelse
                         </tbody>

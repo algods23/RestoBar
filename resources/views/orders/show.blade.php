@@ -117,8 +117,7 @@
 
     <div class="ms-auto" style="max-width: 320px;">
         <div class="d-flex justify-content-between"><span>Subtotal</span><strong>&#8369;{{ number_format($order->subtotal, 2) }}</strong></div>
-        <div class="d-flex justify-content-between"><span>Discount</span><strong>&#8369;{{ number_format($order->discount_amount, 2) }}</strong></div>
-        <div class="d-flex justify-content-between"><span>VAT</span><strong>&#8369;{{ number_format($order->vat_amount, 2) }}</strong></div>
+        <div class="d-flex justify-content-between"><span>Discount ({{ number_format($order->discount_percentage, 2) }}%)</span><strong>&#8369;{{ number_format($order->discount_amount, 2) }}</strong></div>
         <div class="d-flex justify-content-between fs-5"><span>Total</span><strong>&#8369;{{ number_format($order->total_amount, 2) }}</strong></div>
     </div>
 </div>

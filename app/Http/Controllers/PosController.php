@@ -179,8 +179,8 @@ class PosController extends Controller
     {
         $validated = $request->validate([
             'order_type'        => ['required', 'in:dine_in,takeout,mixed,delivery'],
+            'discount_percentage' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'discount_amount'   => ['nullable', 'numeric', 'min:0'],
-            'vat_enabled'       => ['nullable', 'boolean'],
             'payment_method'    => ['required', 'in:cash,card,gcash,bank_transfer'],
             'pay_now'           => ['nullable', 'boolean'],
             'payment_reference' => ['nullable', 'string', 'max:100'],
@@ -199,8 +199,7 @@ class PosController extends Controller
 
         $totals = $this->totals(
             $cart,
-            (float) ($validated['discount_amount'] ?? 0),
-            $request->boolean('vat_enabled')
+            (float) ($validated['discount_percentage'] ?? 0)
         );
 
         $order = DB::transaction(function () use ($validated, $cart, $totals, $request) {
@@ -209,6 +208,7 @@ class PosController extends Controller
                 'order_type'      => $validated['order_type'],
                 'subtotal'        => $totals['subtotal'],
                 'discount_amount' => $totals['discount_amount'],
+                'discount_percentage' => $totals['discount_percentage'],
                 'vat_amount'      => $totals['vat_amount'],
                 'total_amount'    => $totals['total'],
                 'status'          => Order::STATUS_PENDING,
@@ -438,14 +438,15 @@ class PosController extends Controller
 
             // Recalculate order totals
             $subtotal = $order->items()->sum('subtotal');
-            $discountAmount = $order->discount_amount;
-            $vatAmount = $order->vat_amount > 0 ? round(($subtotal - $discountAmount) * 0.12, 2) : 0;
-            $total = max(0, round($subtotal - $discountAmount + $vatAmount, 2));
+            $discountPercentage = (float) $order->discount_percentage;
+            $discountAmount = round($subtotal * ($discountPercentage / 100), 2);
+            $total = max(0, round($subtotal - $discountAmount, 2));
 
             $order->update([
-                'subtotal'     => $subtotal,
-                'vat_amount'   => $vatAmount,
-                'total_amount' => $total,
+                'subtotal'        => $subtotal,
+                'discount_amount' => $discountAmount,
+                'vat_amount'      => 0,
+                'total_amount'    => $total,
             ]);
         });
 
@@ -478,16 +479,18 @@ class PosController extends Controller
         ];
     }
 
-    private function totals(array $cart, float $discountAmount = 0.0, bool $vatEnabled = true): array
+    private function totals(array $cart, float $discountPercentage = 0.0): array
     {
-        $subtotal  = collect($cart)->sum(fn ($item) => $item['price'] * $item['quantity']);
-        $vatAmount = $vatEnabled ? round(($subtotal - $discountAmount) * 0.12, 2) : 0.0;
-        $total     = max(0, round($subtotal - $discountAmount + $vatAmount, 2));
+        $subtotal = collect($cart)->sum(fn ($item) => $item['price'] * $item['quantity']);
+        $discountPercentage = min(100, max(0, $discountPercentage));
+        $discountAmount = round($subtotal * ($discountPercentage / 100), 2);
+        $total = max(0, round($subtotal - $discountAmount, 2));
 
         return [
             'subtotal'        => round($subtotal, 2),
+            'discount_percentage' => round($discountPercentage, 2),
             'discount_amount' => round($discountAmount, 2),
-            'vat_amount'      => round($vatAmount, 2),
+            'vat_amount'      => 0.0,
             'total'           => $total,
         ];
     }

@@ -57,7 +57,6 @@ class ReportController extends Controller
             'orders' => (clone $orders)->count(),
             'sales' => (clone $orders)->sum('total_amount'),
             'subtotal' => (clone $orders)->sum('subtotal'),
-            'vat' => (clone $orders)->sum('vat_amount'),
         ];
     }
 
