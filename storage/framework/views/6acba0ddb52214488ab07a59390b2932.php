@@ -36,10 +36,7 @@
                         <label class="form-label">Reference</label>
                         <input type="text" name="reference" id="pm_reference" class="form-control">
                     </div>
-                    <div class="mb-2">
-                        <label class="form-label">Notes</label>
-                        <input type="text" name="notes" id="pm_notes" class="form-control">
-                    </div>
+                   
                     <div class="alert alert-warning mb-0">
                         Please confirm the payment details before completing this order.
                     </div>
@@ -53,8 +50,8 @@
     </div>
 </div>
 
-@once
-@push('scripts')
+<?php if (! $__env->hasRenderedOnce('2c6dd226-89b6-4d8b-901c-dcbbeea4fe18')): $__env->markAsRenderedOnce('2c6dd226-89b6-4d8b-901c-dcbbeea4fe18'); ?>
+<?php $__env->startPush('scripts'); ?>
 <script>
 function orderPaymentMoney(value) {
     return '\u20b1' + Number(value || 0).toFixed(2);
@@ -145,5 +142,6 @@ document.getElementById('pm_submit').addEventListener('click', async () => {
     submit.textContent = 'Confirm Payment';
 });
 </script>
-@endpush
-@endonce
+<?php $__env->stopPush(); ?>
+<?php endif; ?>
+<?php /**PATH C:\laragon\www\RestoBar\resources\views/orders/partials/payment-modal.blade.php ENDPATH**/ ?>
