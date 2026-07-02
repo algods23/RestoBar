@@ -47,6 +47,13 @@
         color: #555;
         margin: 8px 0 4px;
     }
+    .addon-section-label {
+        color: #000;
+        border-top: 1px dashed #bbb;
+        border-bottom: 1px dashed #bbb;
+        padding: 4px 0;
+        margin-top: 10px;
+    }
 
     .section-subtotal {
         text-align: right;
@@ -63,18 +70,49 @@
 
     .receipt-footer { text-align: center; margin-top: 16px; font-size: 11px; color: #888; }
 
-    .print-btn {
-        display: block; width: 100%; padding: 10px; margin: 14px 0 0;
-        font-size: 13px; background: #111; color: #fff; border: none;
-        cursor: pointer; border-radius: 6px; letter-spacing: 0.5px;
+    .receipt-actions {
+        position: fixed;
+        top: 120px;
+        right: 32px;
+        width: 220px;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        padding: 12px;
+        z-index: 20;
     }
-    .print-btn:hover { background: #333; }
+    .receipt-actions-title {
+        font-size: 12px;
+        font-weight: bold;
+        color: #555;
+        margin-bottom: 8px;
+    }
+    .print-btn,
     .back-btn {
-        display: block; width: 100%; padding: 10px; margin: 8px 0 0;
-        font-size: 13px; background: #444; color: #fff; border: none;
-        cursor: pointer; border-radius: 6px; letter-spacing: 0.5px;
+        display: block;
+        width: 100%;
+        padding: 10px;
+        font-size: 13px;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        border-radius: 6px;
+        letter-spacing: 0.5px;
     }
+    .print-btn { background: #111; }
+    .print-btn:hover { background: #333; }
+    .back-btn { background: #444; margin-top: 8px; }
     .back-btn:hover { background: #666; }
+
+    @media (max-width: 920px) {
+        .receipt-actions {
+            position: static;
+            max-width: 400px;
+            width: auto;
+            margin: 12px auto 0;
+        }
+    }
 
     @media print {
         body { background: #fff; }
@@ -91,6 +129,7 @@
         th { font-size: 8px !important; }
         td { padding: 2px 1px !important; }
         .section-label { font-size: 8px !important; margin: 4px 0 2px !important; }
+        .addon-section-label { padding: 2px 0 !important; margin-top: 5px !important; }
         .section-subtotal { font-size: 8px !important; }
         .summary { font-size: 9px !important; }
         .summary-row.total { font-size: 11px !important; }
@@ -101,16 +140,16 @@
 </style>
 
 @php
-    $hasDineIn = $order->items->contains(fn($i) => ($i->item_type ?? 'dine_in') === 'dine_in');
-    $hasTakeout = $order->items->contains(fn($i) => ($i->item_type ?? 'dine_in') === 'takeout');
-    $isMixed   = $hasDineIn && $hasTakeout;
-    $dineItems = $order->items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'dine_in');
-    $takeItems = $order->items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'takeout');
+    $regularItems = $order->items->where('is_additional', false);
+    $addonItems = $order->items->where('is_additional', true);
+    $typeLabel = fn ($type) => match ($type) {
+        'takeout' => 'Takeout',
+        'delivery' => 'Delivery',
+        default => 'Dine-in',
+    };
 @endphp
 
 <div class="receipt">
-
-    {{-- HEADER --}}
     <div class="receipt-header">
         <h2>RestoBar POS</h2>
         <div class="date">
@@ -121,7 +160,6 @@
 
     <hr class="dashed">
 
-    {{-- CASHIER / ORDER TYPE --}}
     <div class="receipt-meta">
         <div>Cashier: <strong>{{ $order->user?->name ?? 'N/A' }}</strong></div>
         <div>Type: <strong>{{ str_replace('_', ' ', ucfirst($order->order_type)) }}</strong></div>
@@ -135,66 +173,40 @@
 
     <hr class="dashed">
 
-    {{-- ITEMS --}}
-    @if($isMixed && $dineItems->count() && $takeItems->count())
+    <table>
+        <thead>
+            <tr><th>Item</th><th>Qty</th><th>PHP</th><th>Total</th></tr>
+        </thead>
+        <tbody>
+            @foreach($regularItems as $item)
+                <tr>
+                    <td>
+                        {{ $item->product?->name ?? 'N/A' }}
+                        @if($item->item_type && $item->item_type !== $order->order_type)
+                            <span style="font-size: 8px;">({{ $typeLabel($item->item_type) }})</span>
+                        @endif
+                    </td>
+                    <td style="text-align:center;">{{ $item->quantity }}</td>
+                    <td style="text-align:right;">{{ number_format($item->price, 2) }}</td>
+                    <td style="text-align:right;">{{ number_format($item->subtotal, 2) }}</td>
+                </tr>
+            @endforeach
+        </tbody>
+    </table>
 
-        {{-- DINE-IN SECTION --}}
-        <div class="section-label">🍽 Dine-in</div>
+    @if($addonItems->isNotEmpty())
+        <div class="section-label addon-section-label">ADD-ON</div>
         <table>
             <thead>
-                <tr><th>Item</th><th>Qty</th><th>₱</th><th>Total</th></tr>
+                <tr><th>Item</th><th>Qty</th><th>PHP</th><th>Total</th></tr>
             </thead>
             <tbody>
-                @foreach($dineItems as $item)
-                    <tr>
-                        <td>{{ $item->product?->name ?? 'N/A' }}</td>
-                        <td style="text-align:center;">{{ $item->quantity }}</td>
-                        <td style="text-align:right;">{{ number_format($item->price, 2) }}</td>
-                        <td style="text-align:right;">{{ number_format($item->subtotal, 2) }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-        <div class="section-subtotal">
-            Section subtotal: ₱{{ number_format($dineItems->sum('subtotal'), 2) }}
-        </div>
-
-        <hr class="dashed">
-
-        {{-- TAKEOUT SECTION --}}
-        <div class="section-label">🥡 Take-out</div>
-        <table>
-            <thead>
-                <tr><th>Item</th><th>Qty</th><th>₱</th><th>Total</th></tr>
-            </thead>
-            <tbody>
-                @foreach($takeItems as $item)
-                    <tr>
-                        <td>{{ $item->product?->name ?? 'N/A' }}</td>
-                        <td style="text-align:center;">{{ $item->quantity }}</td>
-                        <td style="text-align:right;">{{ number_format($item->price, 2) }}</td>
-                        <td style="text-align:right;">{{ number_format($item->subtotal, 2) }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-        <div class="section-subtotal">
-            Section subtotal: ₱{{ number_format($takeItems->sum('subtotal'), 2) }}
-        </div>
-
-    @else
-        {{-- NORMAL single-type items --}}
-        <table>
-            <thead>
-                <tr><th>Item</th><th>Qty</th><th>₱</th><th>Total</th></tr>
-            </thead>
-            <tbody>
-                @foreach($order->items as $item)
+                @foreach($addonItems as $item)
                     <tr>
                         <td>
                             {{ $item->product?->name ?? 'N/A' }}
                             @if($item->item_type && $item->item_type !== $order->order_type)
-                                <span style="font-size: 8px;">({{ $item->item_type === 'dine_in' ? 'Dine-in' : 'Takeout' }})</span>
+                                <span style="font-size: 8px;">({{ $typeLabel($item->item_type) }})</span>
                             @endif
                         </td>
                         <td style="text-align:center;">{{ $item->quantity }}</td>
@@ -204,43 +216,33 @@
                 @endforeach
             </tbody>
         </table>
+        <div class="section-subtotal">
+            Add-on subtotal: PHP {{ number_format($addonItems->sum('subtotal'), 2) }}
+        </div>
     @endif
 
     <hr class="dashed">
 
-    {{-- SUMMARY --}}
     <div class="summary">
         <div class="summary-row">
             <span>Subtotal</span>
-            <span>₱{{ number_format($order->subtotal, 2) }}</span>
+            <span>PHP {{ number_format($order->subtotal, 2) }}</span>
         </div>
         <div class="summary-row">
             <span>Discount</span>
-            <span>₱{{ number_format($order->discount_amount, 2) }}</span>
+            <span>PHP {{ number_format($order->discount_amount, 2) }}</span>
         </div>
         <div class="summary-row">
             <span>VAT (12%)</span>
-            <span>₱{{ number_format($order->vat_amount, 2) }}</span>
+            <span>PHP {{ number_format($order->vat_amount, 2) }}</span>
         </div>
         <hr class="dashed">
         <div class="summary-row total">
             <span>TOTAL</span>
-            <span>₱{{ number_format($order->total_amount, 2) }}</span>
+            <span>PHP {{ number_format($order->total_amount, 2) }}</span>
         </div>
-        @if($order->payment_method === 'cash' && $order->amount_paid)
-        <hr class="dashed">
-        <div class="summary-row">
-            <span>Amount Paid</span>
-            <span>₱{{ number_format($order->amount_paid, 2) }}</span>
-        </div>
-        <div class="summary-row">
-            <span>Change</span>
-            <span>₱{{ number_format(max(0, $order->amount_paid - $order->total_amount), 2) }}</span>
-        </div>
-        @endif
     </div>
 
-    {{-- PAYMENT METHOD --}}
     <hr class="dashed">
     <div class="receipt-meta" style="font-size:11px;">
         <div>Payment: <strong>{{ str_replace('_', ' ', ucfirst($order->payment_method)) }}</strong></div>
@@ -249,18 +251,16 @@
         @endif
     </div>
 
-    {{-- FOOTER --}}
     <div class="receipt-footer">
         <div>Thank you for your purchase!</div>
         <div style="margin-top:4px;">Powered by RestoBar POS</div>
     </div>
-
 </div>
 
-{{-- BUTTONS --}}
-<div class="no-print" style="max-width:400px;margin:0 auto;">
-    <button class="print-btn" onclick="window.print()">🖨️ Print Receipt</button>
-    <button class="back-btn" onclick="window.location.href='{{ route('pos.index') }}'">← Back to POS</button>
+<div class="receipt-actions no-print">
+    <div class="receipt-actions-title">Receipt Actions</div>
+    <button class="print-btn" onclick="window.print()">Print Receipt</button>
+    <button class="back-btn" onclick="window.location.href='{{ route('pos.index') }}'">Back to POS</button>
 </div>
 @endsection
 

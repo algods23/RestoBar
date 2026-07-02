@@ -9,9 +9,6 @@
         </div>
         <div>
             <a href="{{ route('orders.receipt', $order) }}" class="btn btn-outline-dark">Print Receipt</a>
-            @if($hasAdditionalItems)
-                <a href="{{ route('orders.kitchen_receipt', ['order' => $order, 'additional' => 1]) }}" class="btn btn-outline-primary">Print Add-ons</a>
-            @endif
             @if($order->status === 'pending')
                 <button class="btn btn-success pay-btn" data-id="{{ $order->id }}" data-total="{{ $order->total_amount }}">Pay</button>
             @endif

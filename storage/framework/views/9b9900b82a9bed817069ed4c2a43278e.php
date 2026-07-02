@@ -1,5 +1,3 @@
-
-
 <?php $__env->startSection('content'); ?>
 <style>
     body { background: #f0f0f0; }
@@ -47,6 +45,13 @@
         color: #555;
         margin: 8px 0 4px;
     }
+    .addon-section-label {
+        color: #000;
+        border-top: 1px dashed #bbb;
+        border-bottom: 1px dashed #bbb;
+        padding: 4px 0;
+        margin-top: 10px;
+    }
 
     .section-subtotal {
         text-align: right;
@@ -63,18 +68,49 @@
 
     .receipt-footer { text-align: center; margin-top: 16px; font-size: 11px; color: #888; }
 
-    .print-btn {
-        display: block; width: 100%; padding: 10px; margin: 14px 0 0;
-        font-size: 13px; background: #111; color: #fff; border: none;
-        cursor: pointer; border-radius: 6px; letter-spacing: 0.5px;
+    .receipt-actions {
+        position: fixed;
+        top: 120px;
+        right: 32px;
+        width: 220px;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        padding: 12px;
+        z-index: 20;
     }
-    .print-btn:hover { background: #333; }
+    .receipt-actions-title {
+        font-size: 12px;
+        font-weight: bold;
+        color: #555;
+        margin-bottom: 8px;
+    }
+    .print-btn,
     .back-btn {
-        display: block; width: 100%; padding: 10px; margin: 8px 0 0;
-        font-size: 13px; background: #444; color: #fff; border: none;
-        cursor: pointer; border-radius: 6px; letter-spacing: 0.5px;
+        display: block;
+        width: 100%;
+        padding: 10px;
+        font-size: 13px;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+        border-radius: 6px;
+        letter-spacing: 0.5px;
     }
+    .print-btn { background: #111; }
+    .print-btn:hover { background: #333; }
+    .back-btn { background: #444; margin-top: 8px; }
     .back-btn:hover { background: #666; }
+
+    @media (max-width: 920px) {
+        .receipt-actions {
+            position: static;
+            max-width: 400px;
+            width: auto;
+            margin: 12px auto 0;
+        }
+    }
 
     @media print {
         body { background: #fff; }
@@ -91,6 +127,7 @@
         th { font-size: 8px !important; }
         td { padding: 2px 1px !important; }
         .section-label { font-size: 8px !important; margin: 4px 0 2px !important; }
+        .addon-section-label { padding: 2px 0 !important; margin-top: 5px !important; }
         .section-subtotal { font-size: 8px !important; }
         .summary { font-size: 9px !important; }
         .summary-row.total { font-size: 11px !important; }
@@ -101,16 +138,16 @@
 </style>
 
 <?php
-    $hasDineIn = $order->items->contains(fn($i) => ($i->item_type ?? 'dine_in') === 'dine_in');
-    $hasTakeout = $order->items->contains(fn($i) => ($i->item_type ?? 'dine_in') === 'takeout');
-    $isMixed   = $hasDineIn && $hasTakeout;
-    $dineItems = $order->items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'dine_in');
-    $takeItems = $order->items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'takeout');
+    $regularItems = $order->items->where('is_additional', false);
+    $addonItems = $order->items->where('is_additional', true);
+    $typeLabel = fn ($type) => match ($type) {
+        'takeout' => 'Takeout',
+        'delivery' => 'Delivery',
+        default => 'Dine-in',
+    };
 ?>
 
 <div class="receipt">
-
-    
     <div class="receipt-header">
         <h2>RestoBar POS</h2>
         <div class="date">
@@ -122,7 +159,6 @@
 
     <hr class="dashed">
 
-    
     <div class="receipt-meta">
         <div>Cashier: <strong><?php echo e($order->user?->name ?? 'N/A'); ?></strong></div>
         <div>Type: <strong><?php echo e(str_replace('_', ' ', ucfirst($order->order_type))); ?></strong></div>
@@ -136,69 +172,42 @@
 
     <hr class="dashed">
 
-    
-    <?php if($isMixed && $dineItems->count() && $takeItems->count()): ?>
+    <table>
+        <thead>
+            <tr><th>Item</th><th>Qty</th><th>PHP</th><th>Total</th></tr>
+        </thead>
+        <tbody>
+            <?php $__currentLoopData = $regularItems; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <tr>
+                    <td>
+                        <?php echo e($item->product?->name ?? 'N/A'); ?>
 
-        
-        <div class="section-label">🍽 Dine-in</div>
+                        <?php if($item->item_type && $item->item_type !== $order->order_type): ?>
+                            <span style="font-size: 8px;">(<?php echo e($typeLabel($item->item_type)); ?>)</span>
+                        <?php endif; ?>
+                    </td>
+                    <td style="text-align:center;"><?php echo e($item->quantity); ?></td>
+                    <td style="text-align:right;"><?php echo e(number_format($item->price, 2)); ?></td>
+                    <td style="text-align:right;"><?php echo e(number_format($item->subtotal, 2)); ?></td>
+                </tr>
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+        </tbody>
+    </table>
+
+    <?php if($addonItems->isNotEmpty()): ?>
+        <div class="section-label addon-section-label">ADD-ON</div>
         <table>
             <thead>
-                <tr><th>Item</th><th>Qty</th><th>₱</th><th>Total</th></tr>
+                <tr><th>Item</th><th>Qty</th><th>PHP</th><th>Total</th></tr>
             </thead>
             <tbody>
-                <?php $__currentLoopData = $dineItems; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                    <tr>
-                        <td><?php echo e($item->product?->name ?? 'N/A'); ?></td>
-                        <td style="text-align:center;"><?php echo e($item->quantity); ?></td>
-                        <td style="text-align:right;"><?php echo e(number_format($item->price, 2)); ?></td>
-                        <td style="text-align:right;"><?php echo e(number_format($item->subtotal, 2)); ?></td>
-                    </tr>
-                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-            </tbody>
-        </table>
-        <div class="section-subtotal">
-            Section subtotal: ₱<?php echo e(number_format($dineItems->sum('subtotal'), 2)); ?>
-
-        </div>
-
-        <hr class="dashed">
-
-        
-        <div class="section-label">🥡 Take-out</div>
-        <table>
-            <thead>
-                <tr><th>Item</th><th>Qty</th><th>₱</th><th>Total</th></tr>
-            </thead>
-            <tbody>
-                <?php $__currentLoopData = $takeItems; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                    <tr>
-                        <td><?php echo e($item->product?->name ?? 'N/A'); ?></td>
-                        <td style="text-align:center;"><?php echo e($item->quantity); ?></td>
-                        <td style="text-align:right;"><?php echo e(number_format($item->price, 2)); ?></td>
-                        <td style="text-align:right;"><?php echo e(number_format($item->subtotal, 2)); ?></td>
-                    </tr>
-                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
-            </tbody>
-        </table>
-        <div class="section-subtotal">
-            Section subtotal: ₱<?php echo e(number_format($takeItems->sum('subtotal'), 2)); ?>
-
-        </div>
-
-    <?php else: ?>
-        
-        <table>
-            <thead>
-                <tr><th>Item</th><th>Qty</th><th>₱</th><th>Total</th></tr>
-            </thead>
-            <tbody>
-                <?php $__currentLoopData = $order->items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <?php $__currentLoopData = $addonItems; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                     <tr>
                         <td>
                             <?php echo e($item->product?->name ?? 'N/A'); ?>
 
                             <?php if($item->item_type && $item->item_type !== $order->order_type): ?>
-                                <span style="font-size: 8px;">(<?php echo e($item->item_type === 'dine_in' ? 'Dine-in' : 'Takeout'); ?>)</span>
+                                <span style="font-size: 8px;">(<?php echo e($typeLabel($item->item_type)); ?>)</span>
                             <?php endif; ?>
                         </td>
                         <td style="text-align:center;"><?php echo e($item->quantity); ?></td>
@@ -208,43 +217,34 @@
                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </tbody>
         </table>
+        <div class="section-subtotal">
+            Add-on subtotal: PHP <?php echo e(number_format($addonItems->sum('subtotal'), 2)); ?>
+
+        </div>
     <?php endif; ?>
 
     <hr class="dashed">
 
-    
     <div class="summary">
         <div class="summary-row">
             <span>Subtotal</span>
-            <span>₱<?php echo e(number_format($order->subtotal, 2)); ?></span>
+            <span>PHP <?php echo e(number_format($order->subtotal, 2)); ?></span>
         </div>
         <div class="summary-row">
             <span>Discount</span>
-            <span>₱<?php echo e(number_format($order->discount_amount, 2)); ?></span>
+            <span>PHP <?php echo e(number_format($order->discount_amount, 2)); ?></span>
         </div>
         <div class="summary-row">
             <span>VAT (12%)</span>
-            <span>₱<?php echo e(number_format($order->vat_amount, 2)); ?></span>
+            <span>PHP <?php echo e(number_format($order->vat_amount, 2)); ?></span>
         </div>
         <hr class="dashed">
         <div class="summary-row total">
             <span>TOTAL</span>
-            <span>₱<?php echo e(number_format($order->total_amount, 2)); ?></span>
+            <span>PHP <?php echo e(number_format($order->total_amount, 2)); ?></span>
         </div>
-        <?php if($order->payment_method === 'cash' && $order->amount_paid): ?>
-        <hr class="dashed">
-        <div class="summary-row">
-            <span>Amount Paid</span>
-            <span>₱<?php echo e(number_format($order->amount_paid, 2)); ?></span>
-        </div>
-        <div class="summary-row">
-            <span>Change</span>
-            <span>₱<?php echo e(number_format(max(0, $order->amount_paid - $order->total_amount), 2)); ?></span>
-        </div>
-        <?php endif; ?>
     </div>
 
-    
     <hr class="dashed">
     <div class="receipt-meta" style="font-size:11px;">
         <div>Payment: <strong><?php echo e(str_replace('_', ' ', ucfirst($order->payment_method))); ?></strong></div>
@@ -253,18 +253,16 @@
         <?php endif; ?>
     </div>
 
-    
     <div class="receipt-footer">
         <div>Thank you for your purchase!</div>
         <div style="margin-top:4px;">Powered by RestoBar POS</div>
     </div>
-
 </div>
 
-
-<div class="no-print" style="max-width:400px;margin:0 auto;">
-    <button class="print-btn" onclick="window.print()">🖨️ Print Receipt</button>
-    <button class="back-btn" onclick="window.location.href='<?php echo e(route('pos.index')); ?>'">← Back to POS</button>
+<div class="receipt-actions no-print">
+    <div class="receipt-actions-title">Receipt Actions</div>
+    <button class="print-btn" onclick="window.print()">Print Receipt</button>
+    <button class="back-btn" onclick="window.location.href='<?php echo e(route('pos.index')); ?>'">Back to POS</button>
 </div>
 <?php $__env->stopSection(); ?>
 
@@ -275,4 +273,5 @@
     });
 </script>
 <?php $__env->stopPush(); ?>
+
 <?php echo $__env->make('layouts.print', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\laragon\www\RestoBar\resources\views/pos/receipt.blade.php ENDPATH**/ ?>
