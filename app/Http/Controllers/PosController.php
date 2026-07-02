@@ -267,16 +267,17 @@ class PosController extends Controller
             return $order;
         });
 
-        if ($request->boolean('pay_now')) {
+        $amountPaid = isset($validated['amount_paid']) && $validated['amount_paid'] !== '' ? (float) $validated['amount_paid'] : 0;
+        if ($amountPaid > 0) {
             if ($validated['payment_method'] !== 'cash' && empty($validated['payment_reference'])) {
                 throw ValidationException::withMessages([
                     'payment_reference' => 'Reference is required for non-cash payments.',
                 ]);
             }
 
-            $amountPaid = $validated['amount_paid'] ?? $totals['total'];
+            // (amount calculation moved up)
 
-            if ($amountPaid < $totals['total']) {
+            if (false) {
                 throw ValidationException::withMessages([
                     'amount_paid' => 'Amount paid is less than order total.',
                 ]);
@@ -290,8 +291,10 @@ class PosController extends Controller
                 'notes'     => 'Paid at checkout',
             ]);
 
-            $order->update(['status' => Order::STATUS_COMPLETED]);
-            $order->releaseTables();
+            if ($amountPaid >= $totals['total']) {
+                $order->update(['status' => Order::STATUS_COMPLETED]);
+                $order->releaseTables();
+            }
         }
 
         $request->session()->forget('pos_cart');
@@ -300,6 +303,7 @@ class PosController extends Controller
         if ($request->expectsJson() || $request->wantsJson() || $request->header('Accept') === 'application/json') {
             return response()->json([
                 'success'             => true,
+                'status'              => $order->status,
                 'redirect_url'        => route('orders.receipt', $order),
                 'kitchen_receipt_url' => route('orders.kitchen_receipt', $order),
             ]);

@@ -194,8 +194,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" id="savePendingOrderBtn" class="btn btn-primary px-4">Save (Pay Later)</button>
-                <button type="button" id="confirmCheckoutBtn" class="btn btn-success px-4">Pay & Complete</button>
+                <button type="button" id="confirmCheckoutBtn" class="btn btn-success px-4">Place Order</button>
             </div>
         </div>
     </div>
@@ -721,8 +720,8 @@ document.getElementById('checkoutBtn').addEventListener('click', () => {
     new bootstrap.Modal(document.getElementById('checkoutModal')).show();
 });
 
-async function submitCheckout(payNow, btnId) {
-    const btn = document.getElementById(btnId);
+document.getElementById('confirmCheckoutBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('confirmCheckoutBtn');
     const oldText = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Processing…';
@@ -739,7 +738,6 @@ async function submitCheckout(payNow, btnId) {
         payload.payment_method    = document.getElementById('paymentMethodSelect').value;
         payload.amount_paid       = document.getElementById('amountPaidInput')?.value || null;
         payload.payment_reference = document.getElementById('paymentReference')?.value || null;
-        payload.pay_now           = payNow ? 1 : 0;
 
         const res = await fetch(`<?php echo e(route('pos.checkout')); ?>`, {
             method: 'POST',
@@ -762,7 +760,7 @@ async function submitCheckout(payNow, btnId) {
             if (data.kitchen_receipt_url) {
                 window.open(data.kitchen_receipt_url, 'kitchen_receipt', 'width=400,height=600');
             }
-            if (payNow) {
+            if (data.status === 'completed') {
                 window.location.href = data.redirect_url;
             } else {
                 window.location.href = `<?php echo e(route('pos.index')); ?>`; // Reload POS to show occupied tables
@@ -780,10 +778,7 @@ async function submitCheckout(payNow, btnId) {
         btn.disabled = false;
         btn.textContent = oldText;
     }
-}
-
-document.getElementById('confirmCheckoutBtn').addEventListener('click', () => submitCheckout(true, 'confirmCheckoutBtn'));
-document.getElementById('savePendingOrderBtn').addEventListener('click', () => submitCheckout(false, 'savePendingOrderBtn'));
+});
 
 
 // ── Add to Existing Order ──────────────────────────────────────────────────────

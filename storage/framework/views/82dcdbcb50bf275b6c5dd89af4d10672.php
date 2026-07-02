@@ -9,7 +9,6 @@
         </div>
         <div>
             <a href="<?php echo e(route('orders.receipt', $order)); ?>" class="btn btn-outline-dark">Print Receipt</a>
-            <a href="<?php echo e(route('orders.kitchen_receipt', $order)); ?>" class="btn btn-outline-secondary">Kitchen Receipt</a>
             <?php if($hasAdditionalItems): ?>
                 <a href="<?php echo e(route('orders.kitchen_receipt', ['order' => $order, 'additional' => 1])); ?>" class="btn btn-outline-primary">Print Add-ons</a>
             <?php endif; ?>

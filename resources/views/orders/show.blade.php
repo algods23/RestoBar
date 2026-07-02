@@ -9,7 +9,6 @@
         </div>
         <div>
             <a href="{{ route('orders.receipt', $order) }}" class="btn btn-outline-dark">Print Receipt</a>
-            <a href="{{ route('orders.kitchen_receipt', $order) }}" class="btn btn-outline-secondary">Kitchen Receipt</a>
             @if($hasAdditionalItems)
                 <a href="{{ route('orders.kitchen_receipt', ['order' => $order, 'additional' => 1]) }}" class="btn btn-outline-primary">Print Add-ons</a>
             @endif
