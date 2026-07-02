@@ -1,7 +1,5 @@
-@extends('layouts.app')
-
-@section('content')
-@php
+<?php $__env->startSection('content'); ?>
+<?php
     $availabilityTabs = [
         '' => ['label' => 'All', 'class' => 'secondary'],
         'available' => ['label' => 'Good', 'class' => 'success'],
@@ -9,7 +7,7 @@
         'out' => ['label' => 'No Stock', 'class' => 'danger'],
     ];
     $currentAvailability = request('availability', '');
-@endphp
+?>
 
 <style>
     .inventory-compact-table {
@@ -53,15 +51,15 @@
                     <span class="badge text-bg-light border">Inventory</span>
                 </div>
 
-                <form method="POST" action="{{ route('inventory.store') }}" id="stockAdjustmentForm">
-                    @csrf
+                <form method="POST" action="<?php echo e(route('inventory.store')); ?>" id="stockAdjustmentForm">
+                    <?php echo csrf_field(); ?>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Product</label>
                         <select name="product_id" id="adjustProduct" class="form-select" required>
                             <option value="">Select a product...</option>
-                            @foreach($adjustmentProducts as $product)
-                                <option value="{{ $product->id }}">{{ $product->name }} ({{ $product->stock }} in stock)</option>
-                            @endforeach
+                            <?php $__currentLoopData = $adjustmentProducts; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <option value="<?php echo e($product->id); ?>"><?php echo e($product->name); ?> (<?php echo e($product->stock); ?> in stock)</option>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </select>
                     </div>
 
@@ -100,25 +98,26 @@
                     </div>
 
                     <ul class="nav nav-pills gap-2" role="tablist">
-                        @foreach ($availabilityTabs as $value => $tab)
+                        <?php $__currentLoopData = $availabilityTabs; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $value => $tab): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <li class="nav-item" role="presentation">
                                 <a
-                                    class="nav-link {{ $currentAvailability === $value ? 'active' : '' }}"
-                                    href="{{ route('inventory.index', array_filter([
+                                    class="nav-link <?php echo e($currentAvailability === $value ? 'active' : ''); ?>"
+                                    href="<?php echo e(route('inventory.index', array_filter([
                                         'search' => request('search'),
                                         'category_id' => request('category_id'),
                                         'availability' => $value,
-                                    ], fn ($item) => $item !== null && $item !== '')) }}"
+                                    ], fn ($item) => $item !== null && $item !== ''))); ?>"
                                 >
-                                    {{ $tab['label'] }}
+                                    <?php echo e($tab['label']); ?>
+
                                 </a>
                             </li>
-                        @endforeach
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </ul>
                 </div>
 
-                <form action="{{ route('inventory.index') }}" method="GET" id="productFilterForm" class="row g-2 mb-3 align-items-center">
-                    <input type="hidden" name="availability" value="{{ request('availability') }}">
+                <form action="<?php echo e(route('inventory.index')); ?>" method="GET" id="productFilterForm" class="row g-2 mb-3 align-items-center">
+                    <input type="hidden" name="availability" value="<?php echo e(request('availability')); ?>">
                     <div class="col-md-6">
                         <label class="visually-hidden" for="productSearch">Search product name</label>
                         <input
@@ -127,7 +126,7 @@
                             id="productSearch"
                             class="form-control form-control-sm"
                             placeholder="Search product name..."
-                            value="{{ request('search') }}"
+                            value="<?php echo e(request('search')); ?>"
                             autocomplete="off"
                         >
                     </div>
@@ -135,13 +134,13 @@
                         <label class="visually-hidden" for="categoryFilter">Category</label>
                         <select name="category_id" id="categoryFilter" class="form-select form-select-sm">
                             <option value="">All Categories</option>
-                            @foreach($categories as $category)
-                                <option value="{{ $category->id }}" @selected(request('category_id') == $category->id)>{{ $category->name }}</option>
-                            @endforeach
+                            <?php $__currentLoopData = $categories; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $category): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <option value="<?php echo e($category->id); ?>" <?php if(request('category_id') == $category->id): echo 'selected'; endif; ?>><?php echo e($category->name); ?></option>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </select>
                     </div>
                     <div class="col-md-2">
-                        <a href="{{ route('inventory.index') }}" class="btn btn-sm btn-outline-secondary w-100 text-nowrap" title="Clear filters">Clear</a>
+                        <a href="<?php echo e(route('inventory.index')); ?>" class="btn btn-sm btn-outline-secondary w-100 text-nowrap" title="Clear filters">Clear</a>
                     </div>
                 </form>
 
@@ -157,54 +156,55 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($products as $product)
-                                @php
+                            <?php $__empty_1 = true; $__currentLoopData = $products; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $product): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                                <?php
                                     $isCritical = $product->stock <= 0;
                                     $isLow = ! $isCritical && $product->isLowStock();
                                     $statusLabel = $isCritical ? 'No Stock' : ($isLow ? 'Low' : 'Good');
                                     $statusClass = $isCritical ? 'danger' : ($isLow ? 'warning' : 'success');
-                                @endphp
+                                ?>
                                 <tr>
                                     <td>
-                                        <div class="fw-semibold">{{ $product->name }}</div>
-                                        <div class="small text-muted">{{ $product->barcode ?: 'No barcode' }}</div>
+                                        <div class="fw-semibold"><?php echo e($product->name); ?></div>
+                                        <div class="small text-muted"><?php echo e($product->barcode ?: 'No barcode'); ?></div>
                                     </td>
-                                    <td>{{ $product->category?->name ?? 'Uncategorized' }}</td>
+                                    <td><?php echo e($product->category?->name ?? 'Uncategorized'); ?></td>
                                     <td class="text-end">
-                                        <div class="fw-semibold">{{ $product->stock }}</div>
-                                        <div class="small text-muted">min {{ $product->reorder_level }}</div>
+                                        <div class="fw-semibold"><?php echo e($product->stock); ?></div>
+                                        <div class="small text-muted">min <?php echo e($product->reorder_level); ?></div>
                                     </td>
                                     <td>
-                                        <span class="badge text-bg-{{ $statusClass }}">{{ $statusLabel }}</span>
+                                        <span class="badge text-bg-<?php echo e($statusClass); ?>"><?php echo e($statusLabel); ?></span>
                                     </td>
                                     <td class="text-end">
-                                        <div class="btn-group btn-group-sm" role="group" aria-label="{{ $product->name }} actions">
-                                            <a href="{{ route('products.edit', $product) }}" class="btn btn-outline-secondary">Update</a>
+                                        <div class="btn-group btn-group-sm" role="group" aria-label="<?php echo e($product->name); ?> actions">
+                                            <a href="<?php echo e(route('products.edit', $product)); ?>" class="btn btn-outline-secondary">Update</a>
                                             <button
                                                 type="button"
                                                 class="btn btn-outline-dark"
-                                                data-adjust-product="{{ $product->id }}"
-                                                data-adjust-name="{{ $product->name }}"
+                                                data-adjust-product="<?php echo e($product->id); ?>"
+                                                data-adjust-name="<?php echo e($product->name); ?>"
                                             >
                                                 Adjust
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
-                            @empty
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                                 <tr>
                                     <td colspan="5" class="text-center text-muted py-5">No products found.</td>
                                 </tr>
-                            @endforelse
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
 
                 <div class="d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between mt-3">
                     <div class="small text-muted">
-                        Showing {{ $products->firstItem() ?? 0 }} to {{ $products->lastItem() ?? 0 }} of {{ $products->total() }} products
+                        Showing <?php echo e($products->firstItem() ?? 0); ?> to <?php echo e($products->lastItem() ?? 0); ?> of <?php echo e($products->total()); ?> products
                     </div>
-                    {{ $products->links('pagination.default') }}
+                    <?php echo e($products->links('pagination.default')); ?>
+
                 </div>
             </div>
         </div>
@@ -215,7 +215,7 @@
             <div class="card-body p-3">
                 <div class="d-flex align-items-center justify-content-between mb-3">
                     <h2 class="h6 mb-0">Logs</h2>
-                    <span class="small text-muted">{{ $logs->total() }} logs</span>
+                    <span class="small text-muted"><?php echo e($logs->total()); ?> logs</span>
                 </div>
 
                 <div class="table-responsive">
@@ -231,52 +231,53 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse ($logs as $log)
+                            <?php $__empty_1 = true; $__currentLoopData = $logs; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $log): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                                 <tr>
-                                    <td class="small text-muted text-nowrap">{{ $log->created_at?->format('M d, Y h:i A') }}</td>
-                                    <td>{{ $log->user?->name ?? 'N/A' }}</td>
-                                    <td>{{ $log->product?->name }}</td>
-                                    <td><span class="badge text-bg-light border">{{ str_replace('_', ' ', $log->type) }}</span></td>
-                                    <td class="text-end">{{ $log->quantity }}</td>
-                                    <td class="text-end fw-semibold">{{ $log->new_stock }}</td>
+                                    <td class="small text-muted text-nowrap"><?php echo e($log->created_at?->format('M d, Y h:i A')); ?></td>
+                                    <td><?php echo e($log->user?->name ?? 'N/A'); ?></td>
+                                    <td><?php echo e($log->product?->name); ?></td>
+                                    <td><span class="badge text-bg-light border"><?php echo e(str_replace('_', ' ', $log->type)); ?></span></td>
+                                    <td class="text-end"><?php echo e($log->quantity); ?></td>
+                                    <td class="text-end fw-semibold"><?php echo e($log->new_stock); ?></td>
                                 </tr>
-                            @empty
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                                 <tr>
                                     <td colspan="6" class="text-center text-muted py-3">No stock activity yet.</td>
                                 </tr>
-                            @endforelse
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
 
-                @if ($logs->hasPages())
+                <?php if($logs->hasPages()): ?>
                     <div class="d-flex align-items-center justify-content-between gap-2 mt-3 pt-3 border-top">
                         <a
-                            href="{{ $logs->previousPageUrl() ?: '#' }}"
-                            class="btn btn-sm btn-outline-secondary {{ $logs->onFirstPage() ? 'disabled' : '' }}"
+                            href="<?php echo e($logs->previousPageUrl() ?: '#'); ?>"
+                            class="btn btn-sm btn-outline-secondary <?php echo e($logs->onFirstPage() ? 'disabled' : ''); ?>"
                             aria-label="Previous logs page"
                         >
                             Prev
                         </a>
                         <span class="small text-muted text-nowrap">
-                            Page {{ $logs->currentPage() }} of {{ $logs->lastPage() }}
+                            Page <?php echo e($logs->currentPage()); ?> of <?php echo e($logs->lastPage()); ?>
+
                         </span>
                         <a
-                            href="{{ $logs->nextPageUrl() ?: '#' }}"
-                            class="btn btn-sm btn-outline-secondary {{ $logs->hasMorePages() ? '' : 'disabled' }}"
+                            href="<?php echo e($logs->nextPageUrl() ?: '#'); ?>"
+                            class="btn btn-sm btn-outline-secondary <?php echo e($logs->hasMorePages() ? '' : 'disabled'); ?>"
                             aria-label="Next logs page"
                         >
                             Next
                         </a>
                     </div>
-                @endif
+                <?php endif; ?>
             </div>
         </div>
     </div>
 </div>
-@endsection
+<?php $__env->stopSection(); ?>
 
-@push('scripts')
+<?php $__env->startPush('scripts'); ?>
 <script>
     (function () {
         const filterForm = document.getElementById('productFilterForm');
@@ -314,4 +315,6 @@
         });
     })();
 </script>
-@endpush
+<?php $__env->stopPush(); ?>
+
+<?php echo $__env->make('layouts.app', \Illuminate\Support\Arr::except(get_defined_vars(), ['__data', '__path']))->render(); ?><?php /**PATH C:\laragon\www\RestoBar\resources\views/inventory/index.blade.php ENDPATH**/ ?>

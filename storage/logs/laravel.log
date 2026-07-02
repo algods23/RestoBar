@@ -2905,3 +2905,20 @@
 #54 C:/laragon/www/RestoBar/vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php(16): require_once('C://laragon//www//...')
 #55 {main}
 "} 
+[2026-07-02 11:34:04] local.ERROR: Class "PHPUnit\Runner\Version" not found {"exception":"[object] (Error(code: 0): Class \"PHPUnit\\Runner\\Version\" not found at C:/laragon/www/RestoBar/vendor/nunomaduro/collision/src/Adapters/Laravel/Commands/TestCommand.php:74)
+[stacktrace]
+#0 C:/laragon/www/RestoBar/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(36): NunoMaduro/Collision/Adapters/Laravel/Commands/TestCommand->handle()
+#1 C:/laragon/www/RestoBar/vendor/laravel/framework/src/Illuminate/Container/Util.php(41): Illuminate/Container/BoundMethod::Illuminate/Container/{closure}()
+#2 C:/laragon/www/RestoBar/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(93): Illuminate/Container/Util::unwrapIfClosure(Object(Closure))
+#3 C:/laragon/www/RestoBar/vendor/laravel/framework/src/Illuminate/Container/BoundMethod.php(35): Illuminate/Container/BoundMethod::callBoundMethod(Object(Illuminate/Foundation/Application), Array, Object(Closure))
+#4 C:/laragon/www/RestoBar/vendor/laravel/framework/src/Illuminate/Container/Container.php(662): Illuminate/Container/BoundMethod::call(Object(Illuminate/Foundation/Application), Array, Array, NULL)
+#5 C:/laragon/www/RestoBar/vendor/laravel/framework/src/Illuminate/Console/Command.php(211): Illuminate/Container/Container->call(Array)
+#6 C:/laragon/www/RestoBar/vendor/symfony/console/Command/Command.php(326): Illuminate/Console/Command->execute(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#7 C:/laragon/www/RestoBar/vendor/laravel/framework/src/Illuminate/Console/Command.php(180): Symfony/Component/Console/Command/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#8 C:/laragon/www/RestoBar/vendor/symfony/console/Application.php(1121): Illuminate/Console/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#9 C:/laragon/www/RestoBar/vendor/symfony/console/Application.php(324): Symfony/Component/Console/Application->doRunCommand(Object(NunoMaduro/Collision/Adapters/Laravel/Commands/TestCommand), Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#10 C:/laragon/www/RestoBar/vendor/symfony/console/Application.php(175): Symfony/Component/Console/Application->doRun(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#11 C:/laragon/www/RestoBar/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(201): Symfony/Component/Console/Application->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#12 C:/laragon/www/RestoBar/artisan(12): Illuminate/Foundation/Console/Kernel->handle(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#13 {main}
+"} 
