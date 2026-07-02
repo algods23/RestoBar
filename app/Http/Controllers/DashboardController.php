@@ -29,15 +29,55 @@ class DashboardController extends Controller
         $ordersToday = (clone $salesQuery)->whereDate('created_at', $today)->count();
         $lowStockProducts = Product::whereColumn('stock', '<=', 'reorder_level')->count();
 
-        $recentOrders = Order::with('items.product')
-            ->latest()
-            ->limit(8)
-            ->get();
-
+        $period = $request->get('period', 'day');
+        $from = $request->get('from');
+        $to = $request->get('to');
         $salesChart = [];
-        for ($i = 6; $i >= 0; $i--) {
-            $day = Carbon::now()->subDays($i);
-            $salesChart[$day->format('M d')] = (clone $salesQuery)->whereDate('created_at', $day)->sum('total_amount');
+
+        if ($from && $to) {
+            $startDate = Carbon::parse($from);
+            $endDate = Carbon::parse($to);
+            $daysDiff = $startDate->diffInDays($endDate) + 1;
+
+            if ($daysDiff <= 31) {
+                for ($i = 0; $i < $daysDiff; $i++) {
+                    $day = $startDate->copy()->addDays($i);
+                    $salesChart[$day->format('M d')] = (clone $salesQuery)->whereDate('created_at', $day)->sum('total_amount');
+                }
+            } else {
+                for ($i = 0; $i <= $daysDiff; $i += 7) {
+                    $weekStart = $startDate->copy()->addDays($i);
+                    $weekEnd = $weekStart->copy()->addDays(6)->min($endDate);
+                    $salesChart[$weekStart->format('M d') . ' - ' . $weekEnd->format('M d')] = (clone $salesQuery)
+                        ->whereBetween('created_at', [$weekStart->startOfDay(), $weekEnd->endOfDay()])
+                        ->sum('total_amount');
+                }
+            }
+        } elseif ($period === 'day') {
+            for ($i = 23; $i >= 0; $i--) {
+                $hour = Carbon::now()->subHours($i);
+                $salesChart[$hour->format('H:00')] = (clone $salesQuery)
+                    ->whereBetween('created_at', [$hour->copy()->startOfHour(), $hour->copy()->endOfHour()])
+                    ->sum('total_amount');
+            }
+        } elseif ($period === 'week') {
+            for ($i = 6; $i >= 0; $i--) {
+                $day = Carbon::now()->subDays($i);
+                $salesChart[$day->format('M d')] = (clone $salesQuery)->whereDate('created_at', $day)->sum('total_amount');
+            }
+        } elseif ($period === 'month') {
+            for ($i = 29; $i >= 0; $i--) {
+                $day = Carbon::now()->subDays($i);
+                $salesChart[$day->format('M d')] = (clone $salesQuery)->whereDate('created_at', $day)->sum('total_amount');
+            }
+        } elseif ($period === 'year') {
+            for ($i = 11; $i >= 0; $i--) {
+                $month = Carbon::now()->subMonths($i);
+                $salesChart[$month->format('M Y')] = (clone $salesQuery)
+                    ->whereYear('created_at', $month->year)
+                    ->whereMonth('created_at', $month->month)
+                    ->sum('total_amount');
+            }
         }
 
         $bestSellingItems = OrderItem::query()
@@ -55,7 +95,6 @@ class DashboardController extends Controller
             'totalSalesThisMonth',
             'ordersToday',
             'lowStockProducts',
-            'recentOrders',
             'salesChart',
             'bestSellingItems'
         ));
