@@ -80,6 +80,11 @@ new Chart(ctx, {
     }
 });
 
+// Handle date range inputs
+const dateFrom = document.getElementById('dateFrom');
+const dateTo = document.getElementById('dateTo');
+const periodButtons = document.querySelectorAll('.btn-group a');
+
 // Toggle date inputs vs year dropdown based on period
 const currentPeriod = '{{ request('period') ?? 'day' }}';
 const dateInputGroup = document.getElementById('dateInputGroup');
@@ -107,10 +112,6 @@ periodButtons.forEach(function(btn) {
         toggleFilterInputs(period);
     });
 });
-
-// Handle date range inputs
-const dateFrom = document.getElementById('dateFrom');
-const dateTo = document.getElementById('dateTo');
 
 function updateChart() {
     const from = dateFrom.value;

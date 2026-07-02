@@ -22,11 +22,19 @@
                 </div>
             </div>
             <div class="row g-2 mb-3">
-                <div class="col-sm-6">
+                <div class="col-sm-6" id="dateInputGroup">
                     <input type="date" id="dateFrom" class="form-control form-control-sm" value="<?php echo e(request('from') ?? ''); ?>" placeholder="From">
                 </div>
-                <div class="col-sm-6">
+                <div class="col-sm-6" id="dateInputGroup2">
                     <input type="date" id="dateTo" class="form-control form-control-sm" value="<?php echo e(request('to') ?? ''); ?>" placeholder="To">
+                </div>
+                <div class="col-sm-12 d-none" id="yearGroup">
+                    <select id="yearSelect" class="form-select form-select-sm">
+                        <?php for($i = 0; $i < 5; $i++): ?>
+                            <?php $year = date('Y') - $i ?>
+                            <option value="<?php echo e($year); ?>" <?php echo e(request('year') == $year ? 'selected' : ''); ?>><?php echo e($year); ?></option>
+                        <?php endfor; ?>
+                    </select>
                 </div>
             </div>
             <canvas id="salesChart" height="110"></canvas>
@@ -77,6 +85,34 @@ const dateFrom = document.getElementById('dateFrom');
 const dateTo = document.getElementById('dateTo');
 const periodButtons = document.querySelectorAll('.btn-group a');
 
+// Toggle date inputs vs year dropdown based on period
+const currentPeriod = '<?php echo e(request('period') ?? 'day'); ?>';
+const dateInputGroup = document.getElementById('dateInputGroup');
+const dateInputGroup2 = document.getElementById('dateInputGroup2');
+const yearGroup = document.getElementById('yearGroup');
+
+function toggleFilterInputs(period) {
+    if (period === 'year') {
+        dateInputGroup.classList.add('d-none');
+        dateInputGroup2.classList.add('d-none');
+        yearGroup.classList.remove('d-none');
+    } else {
+        dateInputGroup.classList.remove('d-none');
+        dateInputGroup2.classList.remove('d-none');
+        yearGroup.classList.add('d-none');
+    }
+}
+
+toggleFilterInputs(currentPeriod);
+
+// Handle period button clicks
+periodButtons.forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+        const period = new URL(this.href).searchParams.get('period');
+        toggleFilterInputs(period);
+    });
+});
+
 function updateChart() {
     const from = dateFrom.value;
     const to = dateTo.value;
@@ -101,6 +137,17 @@ if (dateTo) {
         if (this.value && dateFrom.value) {
             updateChart();
         }
+    });
+}
+
+// Handle year dropdown
+const yearSelect = document.getElementById('yearSelect');
+if (yearSelect) {
+    yearSelect.addEventListener('change', function() {
+        const url = new URL(window.location.href);
+        url.searchParams.set('year', this.value);
+        url.searchParams.set('period', 'year');
+        window.location.href = url.toString();
     });
 }
 </script>

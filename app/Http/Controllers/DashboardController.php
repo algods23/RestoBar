@@ -32,9 +32,18 @@ class DashboardController extends Controller
         $period = $request->get('period', 'day');
         $from = $request->get('from');
         $to = $request->get('to');
+        $year = $request->get('year');
         $salesChart = [];
 
-        if ($from && $to) {
+        if ($year) {
+            for ($i = 0; $i < 12; $i++) {
+                $month = Carbon::createFromDate($year, 1, 1)->addMonths($i);
+                $salesChart[$month->format('M Y')] = (clone $salesQuery)
+                    ->whereYear('created_at', $month->year)
+                    ->whereMonth('created_at', $month->month)
+                    ->sum('total_amount');
+            }
+        } elseif ($from && $to) {
             $startDate = Carbon::parse($from);
             $endDate = Carbon::parse($to);
             $daysDiff = $startDate->diffInDays($endDate) + 1;
