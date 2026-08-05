@@ -4,8 +4,9 @@
     "description": "Restaurant and bar POS plus inventory management system",
     "require": {
         "php": "^8.2",
+        "barryvdh/laravel-dompdf": "^2.2",
         "laravel/framework": "^10.0",
-        "barryvdh/laravel-dompdf": "^2.2"
+        "mike42/escpos-php": "^2.2"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

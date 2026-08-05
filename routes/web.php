@@ -41,6 +41,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/pos/occupied-tables', [PosController::class, 'occupiedTables'])->name('pos.occupied_tables');
     Route::get('/orders/{order}/receipt', [PosController::class, 'receipt'])->name('orders.receipt');
     Route::get('/orders/{order}/kitchen-receipt', [PosController::class, 'kitchenReceipt'])->name('orders.kitchen_receipt');
+    Route::post('/orders/{order}/print', [PosController::class, 'printToPrinter'])->name('orders.print');
+    Route::get('/printers', [PosController::class, 'listPrinters'])->name('printers.list');
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
 
     Route::get('/orders/archived', [OrderController::class, 'archived'])->name('orders.archived');

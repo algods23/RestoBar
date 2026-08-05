@@ -14,6 +14,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Mike42\Escpos\Printer as EscposPrinter;
+use Mike42\Escpos\PrintConnectors\NetworkPrintConnector;
+use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
+use Mike42\Escpos\PrintConnectors\FilePrintConnector;
 
 class PosController extends Controller
 {
@@ -344,6 +348,121 @@ class PosController extends Controller
             'order' => $order,
             'additionalOnly' => $request->boolean('additional'),
         ]);
+    }
+
+    /**
+     * Return available printer names from the host system.
+     */
+    public function listPrinters(): JsonResponse
+    {
+        $printers = [];
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            $cmd = 'powershell -NoProfile -Command "Get-Printer | Select-Object -ExpandProperty Name"';
+        } else {
+            $cmd = "lpstat -p | awk '{print $2}'";
+        }
+        exec($cmd, $output, $code);
+        if ($code === 0) {
+            $printers = array_values(array_filter($output));
+        }
+
+        return response()->json($printers);
+    }
+
+    /**
+     * Print the kitchen receipt for an order to a named printer on the server.
+     */
+    public function printToPrinter(Request $request, Order $order): JsonResponse
+    {
+        $validated = $request->validate([
+            'printer' => ['required', 'string'],
+        ]);
+
+        $printer = $validated['printer'];
+
+        $order->load('items.product', 'tables');
+        $text = $this->buildPlainReceipt($order, $request->boolean('additional')) . PHP_EOL;
+
+        // keep a copy for debugging
+        $dir = storage_path('app/prints');
+        if (!is_dir($dir)) {
+            mkdir($dir, 0777, true);
+        }
+        $file = $dir . DIRECTORY_SEPARATOR . 'kitchen_order_' . $order->id . '_' . time() . '.txt';
+        file_put_contents($file, $text);
+
+        // Determine connector: network (IP[:port]) or Windows printer name
+        $connector = null;
+        try {
+            if (preg_match('/^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/', $printer)) {
+                // network printer (optional :port)
+                $parts = explode(':', $printer);
+                $host = $parts[0];
+                $port = isset($parts[1]) ? (int) $parts[1] : 9100;
+                $connector = new NetworkPrintConnector($host, $port);
+            } elseif (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+                // try windows print connector with the given printer name
+                $connector = new WindowsPrintConnector($printer);
+            } else {
+                // attempt to write to a device path (common on Linux)
+                if (is_file('/dev/usb/lp0')) {
+                    $connector = new FilePrintConnector('/dev/usb/lp0');
+                }
+            }
+
+            if (! $connector) {
+                return response()->json(['success' => false, 'message' => 'Unsupported printer type or connector not available. Use IP:PORT or a valid Windows shared printer name.'], 422);
+            }
+
+            $escpos = new EscposPrinter($connector);
+            $escpos->text($text);
+            $escpos->cut();
+            $escpos->close();
+
+            return response()->json(['success' => true, 'message' => 'Sent to printer']);
+        } catch (\Throwable $e) {
+            // log error and return output file path for debugging
+            logger()->error('Print error: ' . $e->getMessage(), ['printer' => $printer, 'file' => $file]);
+            return response()->json(['success' => false, 'message' => 'Printing failed: ' . $e->getMessage(), 'file' => $file], 500);
+        }
+    }
+
+    private function buildPlainReceipt(Order $order, bool $additionalOnly = false): string
+    {
+        $lines = [];
+        $lines[] = $additionalOnly ? 'ADDITIONAL ORDER' : 'KITCHEN ORDER';
+        $lines[] = str_repeat('-', 40);
+        $lines[] = 'Order #: ' . $order->id;
+        $lines[] = 'Date: ' . $order->created_at->format('Y-m-d H:i');
+        if ($order->customer_name) {
+            $lines[] = 'Customer: ' . $order->customer_name;
+        }
+        if ($order->tables && $order->tables->count()) {
+            $lines[] = 'Table(s): ' . $order->tables->pluck('number')->map(fn ($t) => 'T' . $t)->join(', ');
+        }
+        $lines[] = '';
+
+        $groups = [
+            'dine_in' => 'DINE-IN',
+            'takeout' => 'TAKE-OUT',
+            'delivery' => 'DELIVERY',
+        ];
+
+        foreach ($groups as $type => $label) {
+            $items = $order->items->filter(fn ($i) => ($i->item_type ?? 'dine_in') === $type);
+            if ($items->count()) {
+                $lines[] = $label . ':';
+                foreach ($items as $item) {
+                    $name = $item->product?->name ?? 'N/A';
+                    $lines[] = str_pad($item->quantity . 'x', 5) . ' ' . $name;
+                }
+                $lines[] = '';
+            }
+        }
+
+        $lines[] = '--- END OF ORDER ---';
+
+        return implode(PHP_EOL, $lines);
     }
 
     /**

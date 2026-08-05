@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'restobar/restobar',
-        'pretty_version' => '1.0.0+no-version-set',
-        'version' => '1.0.0.0',
-        'reference' => null,
+        'pretty_version' => 'dev-master',
+        'version' => 'dev-master',
+        'reference' => '49c62c99ca38c86d3771d5fa09a9d93cb3450d68',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -424,6 +424,15 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
+        'mike42/escpos-php' => array(
+            'pretty_version' => 'v2.2',
+            'version' => '2.2.0.0',
+            'reference' => 'e5496cf819b048b11877117bd14a9cea4fb17c03',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../mike42/escpos-php',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
         'monolog/monolog' => array(
             'pretty_version' => '3.10.0',
             'version' => '3.10.0.0',
@@ -606,9 +615,9 @@
             'dev_requirement' => false,
         ),
         'restobar/restobar' => array(
-            'pretty_version' => '1.0.0+no-version-set',
-            'version' => '1.0.0.0',
-            'reference' => null,
+            'pretty_version' => 'dev-master',
+            'version' => 'dev-master',
+            'reference' => '49c62c99ca38c86d3771d5fa09a9d93cb3450d68',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

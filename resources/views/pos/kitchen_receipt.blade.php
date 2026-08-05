@@ -104,18 +104,69 @@
         </div>
     @endif
 
-    <div class="footer">
-        --- END OF ORDER ---
+</div>
+
+<div style="max-width:58mm; margin:10px auto; font-family:monospace;">
+    <label for="printer_select">Printer:</label>
+    <select id="printer_select" style="width:100%; margin:6px 0; padding:6px; font-size:14px;"></select>
+    <div style="display:flex; gap:6px;">
+        <button id="server_print_btn" style="flex:1; padding:8px;">Print to Printer</button>
+        <button id="browser_print_btn" style="flex:1; padding:8px;">Browser Print</button>
     </div>
+    <div id="print_status" style="margin-top:8px; font-size:12px;"></div>
 </div>
 
 <script>
-    // Auto-print and close window for kitchen receipt
-    window.onload = function() {
+    async function fetchPrinters() {
+        const sel = document.getElementById('printer_select');
+        sel.disabled = true;
+        sel.innerHTML = '<option>Loading...</option>';
+        try {
+            const res = await fetch('{{ route('printers.list') }}', { credentials: 'same-origin' });
+            if (!res.ok) throw new Error('Failed to load printers');
+            const printers = await res.json();
+            sel.innerHTML = '';
+            if (printers.length === 0) {
+                sel.innerHTML = '<option>No printers found</option>';
+            } else {
+                printers.forEach(p => {
+                    const o = document.createElement('option'); o.value = p; o.text = p; sel.appendChild(o);
+                });
+            }
+        } catch (e) {
+            sel.innerHTML = '<option>Error loading printers</option>';
+        } finally {
+            sel.disabled = false;
+        }
+    }
+
+    document.getElementById('server_print_btn').addEventListener('click', async function() {
+        const printer = document.getElementById('printer_select').value;
+        const status = document.getElementById('print_status');
+        status.textContent = 'Sending to printer...';
+        try {
+            const res = await fetch('{{ route('orders.print', $order) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ printer: printer, additional: {{ !empty($additionalOnly) ? '1' : '0' }} })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Print failed');
+            status.textContent = data.message || 'Printed';
+        } catch (e) {
+            status.textContent = 'Error: ' + e.message;
+        }
+    });
+
+    document.getElementById('browser_print_btn').addEventListener('click', function() {
         window.print();
-        setTimeout(function() {
-            window.close();
-        }, 500);
-    };
+    });
+
+    // Fetch printers on load
+    fetchPrinters();
 </script>
 @endsection
