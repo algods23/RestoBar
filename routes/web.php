@@ -43,6 +43,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/orders/{order}/kitchen-receipt', [PosController::class, 'kitchenReceipt'])->name('orders.kitchen_receipt');
     Route::post('/orders/{order}/print', [PosController::class, 'printToPrinter'])->name('orders.print');
     Route::get('/printers', [PosController::class, 'listPrinters'])->name('printers.list');
+    Route::get('/printers/bluetooth', [PosController::class, 'listBluetoothPrinters'])->name('printers.bluetooth');
+    Route::get('/printers/serial', [PosController::class, 'listSerialPorts'])->name('printers.serial');
     Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
 
     Route::get('/orders/archived', [OrderController::class, 'archived'])->name('orders.archived');
@@ -62,4 +64,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/excel', [ReportController::class, 'exportExcel'])->name('reports.excel');
     });
+    // Settings
+    Route::get('/settings', [App\Http\Controllers\SettingsController::class, 'index'])->name('settings.index');
+    Route::post('/settings', [App\Http\Controllers\SettingsController::class, 'save'])->name('settings.save');
+    Route::post('/settings/test-print', [App\Http\Controllers\SettingsController::class, 'testPrint'])->name('settings.test_print');
+    Route::post('/settings/save-key', [App\Http\Controllers\SettingsController::class, 'saveKey'])->name('settings.save_key');
 });

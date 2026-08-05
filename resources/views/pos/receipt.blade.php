@@ -88,6 +88,15 @@
         color: #555;
         margin-bottom: 8px;
     }
+    .receipt-status {
+        min-height: 16px;
+        margin-top: 8px;
+        font-size: 11px;
+        line-height: 1.35;
+        color: #555;
+    }
+    .receipt-status.error { color: #b42318; }
+    .receipt-status.success { color: #067647; }
     .print-btn,
     .back-btn {
         display: block;
@@ -255,15 +264,42 @@
 
 <div class="receipt-actions no-print">
     <div class="receipt-actions-title">Receipt Actions</div>
-    <button class="print-btn" onclick="window.print()">Print Receipt</button>
+    <button id="cashier_print_btn" class="print-btn" type="button">Print to Cashier</button>
+    <button class="back-btn" type="button" onclick="window.print()">Browser Print</button>
     <button class="back-btn" onclick="window.location.href='{{ route('pos.index') }}'">Back to POS</button>
+    <div id="cashier_print_status" class="receipt-status"></div>
 </div>
 @endsection
 
 @push('scripts')
 <script>
-    window.addEventListener('load', () => {
-        setTimeout(() => window.print(), 500);
+    document.getElementById('cashier_print_btn').addEventListener('click', async function() {
+        const status = document.getElementById('cashier_print_status');
+        this.disabled = true;
+        status.className = 'receipt-status';
+        status.textContent = 'Sending to cashier printer...';
+
+        try {
+            const res = await fetch('{{ route('orders.print', $order) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({ receipt_type: 'cashier' }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || 'Print failed');
+
+            status.className = 'receipt-status success';
+            status.textContent = data.message || 'Printed';
+        } catch (e) {
+            status.className = 'receipt-status error';
+            status.textContent = 'Error: ' + e.message;
+        } finally {
+            this.disabled = false;
+        }
     });
 </script>
 @endpush

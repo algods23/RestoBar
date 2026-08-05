@@ -1,0 +1,9 @@
+KITCHEN ORDER
+----------------------------------------
+Order #: 65
+Date: 2026-08-05 01:16
+
+DINE-IN:
+1x    Chicken Sandwich
+
+--- END OF ORDER ---

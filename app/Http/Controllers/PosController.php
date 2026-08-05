@@ -7,7 +7,9 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\Setting;
 use App\Models\Table;
+use App\Support\PrinterConnectorFactory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,9 +17,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Mike42\Escpos\Printer as EscposPrinter;
-use Mike42\Escpos\PrintConnectors\NetworkPrintConnector;
-use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
-use Mike42\Escpos\PrintConnectors\FilePrintConnector;
 
 class PosController extends Controller
 {
@@ -357,7 +356,7 @@ class PosController extends Controller
     {
         $printers = [];
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            $cmd = 'powershell -NoProfile -Command "Get-Printer | Select-Object -ExpandProperty Name"';
+            $cmd = 'powershell -NoProfile -Command "Get-Printer -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name"';
         } else {
             $cmd = "lpstat -p | awk '{print $2}'";
         }
@@ -370,61 +369,213 @@ class PosController extends Controller
     }
 
     /**
-     * Print the kitchen receipt for an order to a named printer on the server.
+     * Discover paired Bluetooth devices on the host.
+     */
+    public function listBluetoothPrinters(): JsonResponse
+    {
+        $devices = [];
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            $cmd = 'powershell -NoProfile -Command "Get-PnpDevice -Class Bluetooth -ErrorAction SilentlyContinue | Select-Object FriendlyName,InstanceId,Status | ConvertTo-Json -Compress"';
+            exec($cmd, $output, $code);
+
+            $serialMap = [];
+            exec('powershell -NoProfile -Command "Get-WmiObject Win32_SerialPort -ErrorAction SilentlyContinue | Select-Object DeviceID,Caption,PNPDeviceID | ConvertTo-Json -Compress"', $spout, $scode);
+            if ($scode === 0) {
+                $sjson = implode(PHP_EOL, $spout);
+                $sdata = json_decode($sjson, true);
+                if ($sdata) {
+                    foreach ($this->rowsFromJson($sdata) as $row) {
+                        $address = $this->bluetoothAddressFromText(($row['PNPDeviceID'] ?? '') . ' ' . ($row['Caption'] ?? ''));
+                        if ($address) {
+                            $serialMap[$address] = [
+                                'id' => $row['DeviceID'] ?? '',
+                                'caption' => $row['Caption'] ?? '',
+                            ];
+                        }
+                    }
+                }
+            }
+
+            if ($code === 0) {
+                $json = implode(PHP_EOL, $output);
+                $data = json_decode($json, true);
+                if ($data) {
+                    foreach ($this->rowsFromJson($data) as $row) {
+                        $name = trim($row['FriendlyName'] ?? '');
+                        if ($name === '' || $this->isBluetoothServiceName($name)) {
+                            continue;
+                        }
+
+                        $address = $this->bluetoothAddressFromText($row['InstanceId'] ?? '');
+                        $matchedPort = $address && isset($serialMap[$address]) ? $serialMap[$address] : null;
+
+                        $devices[] = [
+                            'name' => $name,
+                            'address' => $matchedPort['id'] ?? null,
+                            'caption' => $matchedPort['caption'] ?? null,
+                            'device_address' => $address,
+                            'status' => $row['Status'] ?? null,
+                        ];
+                    }
+                }
+            }
+        } else {
+            // Linux: use bluetoothctl to list paired devices
+            exec('bluetoothctl paired-devices', $output, $code);
+            if ($code === 0) {
+                foreach ($output as $line) {
+                    // Format: Device XX:XX:XX:XX:XX:XX Name
+                    if (preg_match('/^Device\s+([0-9A-F:]+)\s+(.+)$/i', $line, $m)) {
+                        $devices[] = ['name' => trim($m[2]), 'address' => strtoupper($m[1])];
+                    }
+                }
+            }
+        }
+
+        return response()->json($devices);
+    }
+
+    private function rowsFromJson(array $data): array
+    {
+        return isset($data[0]) ? $data : [$data];
+    }
+
+    private function bluetoothAddressFromText(string $text): ?string
+    {
+        if (preg_match('/(?:DEV_|&)([0-9A-F]{12})(?:\\\\|_|&|$)/i', $text, $match)) {
+            return strtoupper($match[1]);
+        }
+
+        return null;
+    }
+
+    private function isBluetoothServiceName(string $name): bool
+    {
+        foreach (['Microsoft Bluetooth', 'Generic Attribute', 'Device Identification', 'Audio Gateway', 'RFCOMM Protocol'] as $service) {
+            if (stripos($name, $service) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * List serial ports (COM) on the host. Helps identify Bluetooth virtual COM ports.
+     */
+    public function listSerialPorts(): JsonResponse
+    {
+        $ports = [];
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            // Use PowerShell to get Win32_SerialPort information as JSON
+            $cmd = 'powershell -NoProfile -Command "Get-WmiObject Win32_SerialPort -ErrorAction SilentlyContinue | Select-Object DeviceID,Caption | ConvertTo-Json -Compress"';
+            exec($cmd, $output, $code);
+            if ($code === 0) {
+                $json = implode(PHP_EOL, $output);
+                $data = json_decode($json, true);
+                if ($data) {
+                    if (isset($data[0])) {
+                        foreach ($data as $row) {
+                            $ports[] = ['id' => $row['DeviceID'] ?? '', 'caption' => $row['Caption'] ?? ''];
+                        }
+                    } else {
+                        $ports[] = ['id' => $data['DeviceID'] ?? '', 'caption' => $data['Caption'] ?? ''];
+                    }
+                }
+            }
+
+            if ($ports === []) {
+                exec('reg query HKLM\HARDWARE\DEVICEMAP\SERIALCOMM', $registryOutput, $registryCode);
+                if ($registryCode === 0) {
+                    foreach ($registryOutput as $line) {
+                        if (preg_match('/REG_SZ\s+(COM\d+)/i', $line, $match)) {
+                            $port = strtoupper($match[1]);
+                            $ports[] = ['id' => $port, 'caption' => 'Bluetooth serial port (' . $port . ')'];
+                        }
+                    }
+                }
+            }
+        } else {
+            // Linux: list common tty devices
+            $candidates = glob('/dev/ttyUSB*');
+            $candidates = array_merge($candidates, glob('/dev/ttyACM*'));
+            $candidates = array_merge($candidates, glob('/dev/rfcomm*'));
+            foreach ($candidates as $dev) {
+                $ports[] = ['id' => $dev, 'caption' => $dev];
+            }
+        }
+
+        usort($ports, fn ($a, $b) => $this->serialPortNumber($a['id'] ?? '') <=> $this->serialPortNumber($b['id'] ?? ''));
+
+        return response()->json($ports);
+    }
+
+    private function serialPortNumber(string $port): int
+    {
+        if (preg_match('/COM(\d+)/i', $port, $match)) {
+            return (int) $match[1];
+        }
+
+        return PHP_INT_MAX;
+    }
+
+    /**
+     * Print an order receipt to a configured server printer.
      */
     public function printToPrinter(Request $request, Order $order): JsonResponse
     {
         $validated = $request->validate([
-            'printer' => ['required', 'string'],
+            'printer' => ['nullable', 'string'],
+            'transport' => ['nullable', 'in:auto,bluetooth'],
+            'additional' => ['nullable', 'boolean'],
+            'receipt_type' => ['nullable', 'in:cashier,kitchen'],
         ]);
 
-        $printer = $validated['printer'];
+        $receiptType = $validated['receipt_type'] ?? 'kitchen';
+        $settingKey = $receiptType === 'cashier' ? 'cashier_printer' : 'kitchen_printer';
+        $fallbackPrinter = $receiptType === 'kitchen' ? Setting::get('default_printer', '') : '';
+        $printer = trim($validated['printer'] ?? '') ?: (string) Setting::get($settingKey, $fallbackPrinter);
+        $transport = $validated['transport'] ?? 'auto';
 
         $order->load('items.product', 'tables');
-        $text = $this->buildPlainReceipt($order, $request->boolean('additional')) . PHP_EOL;
+        $text = $receiptType === 'cashier'
+            ? $this->buildPlainCustomerReceipt($order)
+            : $this->buildPlainReceipt($order, $request->boolean('additional'));
+        $text .= PHP_EOL;
 
         // keep a copy for debugging
         $dir = storage_path('app/prints');
         if (!is_dir($dir)) {
             mkdir($dir, 0777, true);
         }
-        $file = $dir . DIRECTORY_SEPARATOR . 'kitchen_order_' . $order->id . '_' . time() . '.txt';
+        $file = $dir . DIRECTORY_SEPARATOR . $receiptType . '_order_' . $order->id . '_' . time() . '.txt';
         file_put_contents($file, $text);
 
-        // Determine connector: network (IP[:port]) or Windows printer name
-        $connector = null;
         try {
-            if (preg_match('/^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/', $printer)) {
-                // network printer (optional :port)
-                $parts = explode(':', $printer);
-                $host = $parts[0];
-                $port = isset($parts[1]) ? (int) $parts[1] : 9100;
-                $connector = new NetworkPrintConnector($host, $port);
-            } elseif (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-                // try windows print connector with the given printer name
-                $connector = new WindowsPrintConnector($printer);
-            } else {
-                // attempt to write to a device path (common on Linux)
-                if (is_file('/dev/usb/lp0')) {
-                    $connector = new FilePrintConnector('/dev/usb/lp0');
-                }
-            }
-
-            if (! $connector) {
-                return response()->json(['success' => false, 'message' => 'Unsupported printer type or connector not available. Use IP:PORT or a valid Windows shared printer name.'], 422);
-            }
-
+            $connector = PrinterConnectorFactory::make($printer, $transport);
             $escpos = new EscposPrinter($connector);
             $escpos->text($text);
             $escpos->cut();
             $escpos->close();
 
             return response()->json(['success' => true, 'message' => 'Sent to printer']);
+        } catch (\InvalidArgumentException $e) {
+            logger()->warning('Print configuration error: ' . $e->getMessage(), ['printer' => $printer, 'file' => $file]);
+            return response()->json(['success' => false, 'message' => $e->getMessage(), 'file' => $file], 422);
         } catch (\Throwable $e) {
             // log error and return output file path for debugging
             logger()->error('Print error: ' . $e->getMessage(), ['printer' => $printer, 'file' => $file]);
-            return response()->json(['success' => false, 'message' => 'Printing failed: ' . $e->getMessage(), 'file' => $file], 500);
+            return response()->json(['success' => false, 'message' => $this->printerErrorMessage($e->getMessage()), 'file' => $file], 500);
         }
+    }
+
+    private function printerErrorMessage(string $message): string
+    {
+        if (str_contains($message, 'No such file or directory') || str_contains($message, 'Failed to open stream')) {
+            return 'Printer not reachable. For Windows direct printing, share the printer and save the share name in Settings, or use a paired COM port like COM3.';
+        }
+
+        return 'Printing failed: ' . $message;
     }
 
     private function buildPlainReceipt(Order $order, bool $additionalOnly = false): string
@@ -461,6 +612,43 @@ class PosController extends Controller
         }
 
         $lines[] = '--- END OF ORDER ---';
+
+        return implode(PHP_EOL, $lines);
+    }
+
+    private function buildPlainCustomerReceipt(Order $order): string
+    {
+        $lines = [];
+        $lines[] = 'RESTOBAR POS';
+        $lines[] = str_repeat('-', 40);
+        $lines[] = 'Receipt #: ' . $order->id;
+        $lines[] = 'Date: ' . $order->created_at->format('Y-m-d H:i');
+        $lines[] = 'Cashier: ' . ($order->user?->name ?? 'N/A');
+        if ($order->customer_name) {
+            $lines[] = 'Customer: ' . $order->customer_name;
+        }
+        if ($order->tables && $order->tables->count()) {
+            $lines[] = 'Table(s): ' . $order->tables->pluck('number')->map(fn ($t) => 'T' . $t)->join(', ');
+        }
+        $lines[] = str_repeat('-', 40);
+
+        foreach ($order->items as $item) {
+            $name = $item->product?->name ?? 'N/A';
+            $lines[] = $name;
+            $lines[] = $item->quantity . ' x ' . number_format((float) $item->price, 2)
+                . ' = ' . number_format((float) $item->subtotal, 2);
+        }
+
+        $lines[] = str_repeat('-', 40);
+        $lines[] = 'Subtotal: PHP ' . number_format((float) $order->subtotal, 2);
+        $lines[] = 'Discount: PHP ' . number_format((float) $order->discount_amount, 2);
+        $lines[] = 'TOTAL: PHP ' . number_format((float) $order->total_amount, 2);
+        $lines[] = 'Payment: ' . str_replace('_', ' ', ucfirst($order->payment_method));
+        if ($order->payment_reference) {
+            $lines[] = 'Ref: ' . $order->payment_reference;
+        }
+        $lines[] = '';
+        $lines[] = 'Thank you for your purchase!';
 
         return implode(PHP_EOL, $lines);
     }

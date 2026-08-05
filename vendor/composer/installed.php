@@ -3,7 +3,7 @@
         'name' => 'restobar/restobar',
         'pretty_version' => 'dev-master',
         'version' => 'dev-master',
-        'reference' => '49c62c99ca38c86d3771d5fa09a9d93cb3450d68',
+        'reference' => '19c2bdd96bccc40bd530bd91b4c3417b3b9a654f',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -617,7 +617,7 @@
         'restobar/restobar' => array(
             'pretty_version' => 'dev-master',
             'version' => 'dev-master',
-            'reference' => '49c62c99ca38c86d3771d5fa09a9d93cb3450d68',
+            'reference' => '19c2bdd96bccc40bd530bd91b4c3417b3b9a654f',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

@@ -1,0 +1,44 @@
+# Laravel default ignores
+/vendor
+/node_modules
+/.idea
+/.vscode
+/.vagrant
+/.env
+Homestead.json
+Homestead.yaml
+/.phpunit.result.cache
+
+# Laravel storage & cache
+/storage/framework/
+/storage/logs/
+/storage/*.key
+/public/storage
+
+# Database
+/database/*.sqlite
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files accidentally created by printer scan
+COM*
+public/COM*
+
+# Scripts and build outputs
+/scripts/
+
+# Ignore editor temp files
+*~
+*.swp
+*.swo
+
+# Composer
+composer.phar
+
+# Log files
+*.log
+
+# Ignore vendor if you prefer (leave commented if vendor is tracked)
+# /vendor

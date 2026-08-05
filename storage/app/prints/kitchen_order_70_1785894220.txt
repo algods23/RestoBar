@@ -1,0 +1,11 @@
+KITCHEN ORDER
+----------------------------------------
+Order #: 70
+Date: 2026-08-05 01:43
+
+DINE-IN:
+1x    Caesar Salad
+3x    Chicken Sandwich
+1x    Beer Bottle
+
+--- END OF ORDER ---

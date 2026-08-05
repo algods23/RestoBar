@@ -47,6 +47,7 @@
                                 <span class="badge bg-warning text-dark position-absolute top-0 end-0 m-1">Low Stock</span>
                             @endif
                             <img src="{{ $product->imageUrl() }}" alt="{{ $product->name }}"
+                                loading="lazy" decoding="async"
                                 class="w-100 rounded mb-2" style="height: 140px; object-fit: cover;">
                             <div class="fw-semibold text-dark text-truncate">{{ $product->name }}</div>
                             <div class="small text-muted text-truncate">{{ $product->category?->name }}</div>
@@ -477,7 +478,7 @@ function productCard(p) {
                 data-id="${p.id}" data-stock="${p.stock}" ${outOfStock ? 'disabled' : ''}>
                 ${outOfStock ? '<span class="badge bg-danger position-absolute top-0 end-0 m-1">Out of Stock</span>' : ''}
                 ${lowStock   ? '<span class="badge bg-warning text-dark position-absolute top-0 end-0 m-1">Low Stock</span>' : ''}
-                <img src="${p.image_url || fallback}" alt="${p.name}" class="w-100 rounded mb-2" style="height:140px;object-fit:cover">
+                <img src="${p.image_url || fallback}" alt="${p.name}" loading="lazy" decoding="async" class="w-100 rounded mb-2" style="height:140px;object-fit:cover">
                 <div class="fw-semibold text-dark text-truncate">${p.name}</div>
                 <div class="small text-muted text-truncate">${p.category?.name ?? ''}</div>
                 <div class="small text-muted">Stock: ${p.stock}</div>
