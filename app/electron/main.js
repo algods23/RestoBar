@@ -2,6 +2,7 @@ const { app, BrowserWindow, dialog } = require('electron');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const http = require('http');
+const net = require('net');
 const os = require('os');
 const path = require('path');
 
@@ -10,8 +11,12 @@ const PORT = 8001;
 const LOCAL_URL = `http://127.0.0.1:${PORT}`;
 
 let mainWindow = null;
+let splashWindow = null;
 let laravelProcess = null;
 let logStream = null;
+let activeLanUrl = '';
+
+app.setName('RestoBar POS');
 
 const singleInstanceLock = app.requestSingleInstanceLock();
 if (!singleInstanceLock) {
@@ -26,14 +31,26 @@ app.on('second-instance', () => {
 
 function getLocalIp() {
   const interfaces = os.networkInterfaces();
-  for (const entries of Object.values(interfaces)) {
+  const blockedNames = ['virtualbox', 'vmware', 'vethernet', 'hyper-v', 'loopback', 'wsl'];
+  const candidates = [];
+
+  for (const [name, entries] of Object.entries(interfaces)) {
+    if (blockedNames.some(blocked => name.toLowerCase().includes(blocked))) {
+      continue;
+    }
+
     for (const entry of entries || []) {
       if (entry.family === 'IPv4' && !entry.internal) {
-        return entry.address;
+        candidates.push(entry.address);
       }
     }
   }
-  return '127.0.0.1';
+
+  return candidates.find(ip => ip.startsWith('192.168.'))
+    || candidates.find(ip => ip.startsWith('10.'))
+    || candidates.find(ip => /^172\.(1[6-9]|2\d|3[0-1])\./.test(ip))
+    || candidates[0]
+    || '127.0.0.1';
 }
 
 function runtimePaths() {
@@ -57,13 +74,51 @@ function log(message) {
   console.log(line.trim());
 }
 
-function copyDirectory(source, destination) {
+function shouldSkipRuntimeFile(relativePath) {
+  const normalized = relativePath.replace(/\\/g, '/');
+  return normalized === '.env'
+    || normalized === '.runtime-version'
+    || normalized === 'database/database.sqlite'
+    || normalized.startsWith('backup/')
+    || normalized.startsWith('storage/logs/')
+    || normalized.startsWith('storage/framework/sessions/')
+    || normalized.startsWith('storage/app/prints/');
+}
+
+function runtimeVersionPath(paths) {
+  return path.join(paths.laravel, '.runtime-version');
+}
+
+function needsRuntimeSync(paths) {
+  if (!app.isPackaged || !fs.existsSync(paths.laravel)) {
+    return true;
+  }
+
+  const versionFile = runtimeVersionPath(paths);
+  if (!fs.existsSync(versionFile)) {
+    return true;
+  }
+
+  return fs.readFileSync(versionFile, 'utf8').trim() !== app.getVersion();
+}
+
+function markRuntimeSynced(paths) {
+  fs.writeFileSync(runtimeVersionPath(paths), `${app.getVersion()}\n`);
+}
+
+function copyDirectory(source, destination, relativeRoot = '') {
   fs.mkdirSync(destination, { recursive: true });
   for (const entry of fs.readdirSync(source, { withFileTypes: true })) {
     const sourcePath = path.join(source, entry.name);
     const destinationPath = path.join(destination, entry.name);
+    const relativePath = path.join(relativeRoot, entry.name);
+
+    if (shouldSkipRuntimeFile(relativePath)) {
+      continue;
+    }
+
     if (entry.isDirectory()) {
-      copyDirectory(sourcePath, destinationPath);
+      copyDirectory(sourcePath, destinationPath, relativePath);
     } else {
       fs.copyFileSync(sourcePath, destinationPath);
     }
@@ -71,7 +126,7 @@ function copyDirectory(source, destination) {
 }
 
 function ensureRuntimeLaravel(paths) {
-  if (!app.isPackaged || fs.existsSync(path.join(paths.laravel, 'artisan'))) {
+  if (!app.isPackaged) {
     return;
   }
 
@@ -79,8 +134,31 @@ function ensureRuntimeLaravel(paths) {
     throw new Error(`Bundled Laravel app was not found at ${paths.bundledLaravel}`);
   }
 
-  log(`Creating writable Laravel runtime at ${paths.laravel}`);
+  if (!needsRuntimeSync(paths)) {
+    log(`Using existing Laravel runtime at ${paths.laravel}`);
+    return;
+  }
+
+  log(`Syncing writable Laravel runtime at ${paths.laravel}`);
   copyDirectory(paths.bundledLaravel, paths.laravel);
+  markRuntimeSynced(paths);
+}
+
+function ensureLaravelStorage(paths) {
+  const storagePaths = [
+    path.join(paths.laravel, 'storage', 'app'),
+    path.join(paths.laravel, 'storage', 'app', 'prints'),
+    path.join(paths.laravel, 'storage', 'framework'),
+    path.join(paths.laravel, 'storage', 'framework', 'cache'),
+    path.join(paths.laravel, 'storage', 'framework', 'cache', 'data'),
+    path.join(paths.laravel, 'storage', 'framework', 'sessions'),
+    path.join(paths.laravel, 'storage', 'framework', 'views'),
+    path.join(paths.laravel, 'storage', 'logs')
+  ];
+
+  for (const storagePath of storagePaths) {
+    fs.mkdirSync(storagePath, { recursive: true });
+  }
 }
 
 function setEnvValue(contents, key, value) {
@@ -115,11 +193,13 @@ function ensureEnv(paths, lanUrl) {
   env = setEnvValue(env, 'APP_NAME', 'RestoBar');
   env = setEnvValue(env, 'APP_ENV', 'production');
   env = setEnvValue(env, 'APP_DEBUG', 'false');
-  env = setEnvValue(env, 'APP_URL', `${LOCAL_URL}`);
+  env = setEnvValue(env, 'APP_URL', lanUrl);
+  env = setEnvValue(env, 'ASSET_URL', lanUrl);
   env = setEnvValue(env, 'DESKTOP_LAN_URL', lanUrl);
   env = setEnvValue(env, 'DESKTOP_BACKUP_DIR', paths.backupDir);
   env = setEnvValue(env, 'DB_CONNECTION', 'sqlite');
   env = setEnvValue(env, 'DB_DATABASE', databasePath);
+  env = setEnvValue(env, 'DB_FOREIGN_KEYS', 'true');
   env = setEnvValue(env, 'CACHE_STORE', 'file');
   env = setEnvValue(env, 'QUEUE_CONNECTION', 'sync');
   env = setEnvValue(env, 'SESSION_DRIVER', 'file');
@@ -133,7 +213,8 @@ function runArtisan(paths, args) {
     log(`Running artisan ${args.join(' ')}`);
     const child = spawn(paths.php, ['artisan', ...args], {
       cwd: paths.laravel,
-      windowsHide: true
+      windowsHide: true,
+      env: phpEnvironment(paths)
     });
 
     let output = '';
@@ -159,6 +240,7 @@ async function firstRunSetup(paths, lanUrl) {
   }
 
   ensureRuntimeLaravel(paths);
+  ensureLaravelStorage(paths);
   const env = ensureEnv(paths, lanUrl);
 
   if (!env.hasAppKey) {
@@ -167,33 +249,84 @@ async function firstRunSetup(paths, lanUrl) {
 
   await runArtisan(paths, ['config:clear']);
   await runArtisan(paths, ['migrate', '--force']);
+  await runArtisan(paths, ['db:seed', '--force']);
+}
+
+function phpEnvironment(paths) {
+  const phpDir = path.dirname(paths.php);
+  return {
+    ...process.env,
+    APP_ENV: 'production',
+    PHPRC: phpDir,
+    PHP_INI_SCAN_DIR: phpDir,
+    PATH: `${phpDir};${process.env.PATH || ''}`,
+    SystemRoot: process.env.SystemRoot || process.env.WINDIR || 'C:\\Windows'
+  };
+}
+
+function killProcessOnPort(port) {
+  return new Promise(resolve => {
+    const killer = spawn('powershell.exe', [
+      '-NoProfile',
+      '-ExecutionPolicy', 'Bypass',
+      '-Command',
+      `$connections = Get-NetTCPConnection -LocalPort ${port} -State Listen -ErrorAction SilentlyContinue; ` +
+      'if ($connections) { $connections | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { ' +
+      'Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue } }'
+    ], { windowsHide: true });
+
+    killer.on('close', () => resolve());
+    killer.on('error', () => resolve());
+  });
 }
 
 function startLaravel(paths) {
   if (laravelProcess) return;
 
-  laravelProcess = spawn(paths.php, ['artisan', 'serve', `--host=${HOST}`, `--port=${PORT}`], {
+  log(`Starting Laravel via artisan serve on ${HOST}:${PORT}`);
+
+  laravelProcess = spawn(paths.php, ['artisan', 'serve', '--host=0.0.0.0', '--port=8001'], {
     cwd: paths.laravel,
     windowsHide: true,
-    env: { ...process.env, APP_ENV: 'production' }
+    env: phpEnvironment(paths)
   });
 
-  laravelProcess.stdout.on('data', data => log(`[laravel] ${data.toString().trim()}`));
-  laravelProcess.stderr.on('data', data => log(`[laravel:err] ${data.toString().trim()}`));
-  laravelProcess.on('error', err => log(`Laravel failed to spawn: ${err.message}`));
+  laravelProcess.stdout.on('data', data => log(`[artisan-serve] ${data.toString().trim()}`));
+  laravelProcess.stderr.on('data', data => log(`[artisan-serve:err] ${data.toString().trim()}`));
+  laravelProcess.on('error', err => log(`Laravel server failed to spawn: ${err.message}`));
   laravelProcess.on('exit', (code, signal) => {
-    log(`Laravel exited with code=${code} signal=${signal}`);
+    log(`Laravel server exited with code=${code} signal=${signal}`);
     laravelProcess = null;
   });
 }
 
-function isServerReady() {
+function isPortReady() {
   return new Promise(resolve => {
-    const req = http.get(LOCAL_URL, res => {
+    const socket = new net.Socket();
+    socket.setTimeout(1000);
+    socket.once('connect', () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.once('timeout', () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.once('error', () => {
+      socket.destroy();
+      resolve(false);
+    });
+    socket.connect(PORT, '127.0.0.1');
+  });
+}
+
+function isHttpReady(requestPath = '/pos') {
+  return new Promise(resolve => {
+    const req = http.get(`${LOCAL_URL}${requestPath}`, res => {
       res.resume();
       resolve(res.statusCode >= 200 && res.statusCode < 500);
     });
-    req.setTimeout(1000, () => {
+    req.setTimeout(2000, () => {
       req.destroy();
       resolve(false);
     });
@@ -201,18 +334,62 @@ function isServerReady() {
   });
 }
 
-async function waitForServer(maxAttempts = 60) {
+async function waitForServer(maxAttempts = 90) {
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    if (await isServerReady()) return;
-    if (!laravelProcess) {
-      throw new Error('Laravel server stopped before it became ready.');
+    const portReady = await isPortReady();
+    const httpReady = portReady ? await isHttpReady('/pos') : false;
+
+    if (httpReady) {
+      log(`RestoBar server is ready at ${LOCAL_URL}/pos`);
+      return;
     }
+
+    if (!laravelProcess) {
+      throw new Error('The bundled Laravel server stopped before it became ready.');
+    }
+
+    if (attempt % 5 === 0) {
+      log(`Waiting for server... attempt ${attempt}/${maxAttempts} (port=${portReady ? 'open' : 'closed'})`);
+    }
+
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  throw new Error(`Laravel did not become ready at ${LOCAL_URL} after ${maxAttempts} seconds.`);
+
+  throw new Error(`RestoBar did not become ready at ${LOCAL_URL} after ${maxAttempts} seconds. Check ${path.join(runtimePaths().logDir, 'electron.log')}.`);
+}
+
+function createSplashWindow(message = 'Starting RestoBar POS...') {
+  splashWindow = new BrowserWindow({
+    width: 420,
+    height: 220,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    frame: true,
+    title: 'RestoBar POS',
+    alwaysOnTop: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
+
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>RestoBar POS</title>
+<style>body{font-family:Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f8f9fa;color:#212529}div{text-align:center;padding:24px}h1{font-size:20px;margin:0 0 12px}p{margin:0;color:#6c757d;font-size:14px}</style>
+</head><body><div><h1>RestoBar POS</h1><p>${message}</p></div></body></html>`;
+  splashWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+}
+
+function closeSplashWindow() {
+  if (!splashWindow) return;
+  splashWindow.close();
+  splashWindow = null;
 }
 
 function createWindow(lanUrl) {
+  closeSplashWindow();
+  activeLanUrl = lanUrl;
+
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 800,
@@ -225,10 +402,47 @@ function createWindow(lanUrl) {
     }
   });
 
+  mainWindow.webContents.on('page-title-updated', event => {
+    event.preventDefault();
+  });
+
   mainWindow.loadURL(`${LOCAL_URL}/pos`);
   mainWindow.webContents.on('did-finish-load', () => {
-    mainWindow.setTitle(`RestoBar POS - ${lanUrl}`);
+    mainWindow.setTitle('RestoBar POS');
+
+    if (!activeLanUrl) {
+      return;
+    }
+
+    const bannerScript = `
+      (() => {
+        const lanUrl = ${JSON.stringify(activeLanUrl)};
+        const existing = document.getElementById('restobar-lan-banner');
+        if (existing) existing.remove();
+
+        const banner = document.createElement('div');
+        banner.id = 'restobar-lan-banner';
+        banner.innerHTML = '<strong>Access this system via:</strong> <span>' + lanUrl + '</span>';
+        banner.style.position = 'fixed';
+        banner.style.top = '0';
+        banner.style.left = '0';
+        banner.style.right = '0';
+        banner.style.zIndex = '2147483647';
+        banner.style.padding = '10px 16px';
+        banner.style.background = 'rgba(17, 24, 39, 0.96)';
+        banner.style.color = '#f9fafb';
+        banner.style.font = '600 13px Segoe UI, sans-serif';
+        banner.style.letterSpacing = '0.01em';
+        banner.style.boxShadow = '0 2px 14px rgba(0, 0, 0, 0.25)';
+        banner.style.pointerEvents = 'none';
+        document.body.appendChild(banner);
+        document.body.style.paddingTop = '44px';
+      })();
+    `;
+
+    mainWindow.webContents.executeJavaScript(bannerScript).catch(() => {});
   });
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -246,17 +460,30 @@ app.whenReady().then(async () => {
   const paths = runtimePaths();
   fs.mkdirSync(paths.logDir, { recursive: true });
   logStream = fs.createWriteStream(path.join(paths.logDir, 'electron.log'), { flags: 'a' });
+  createSplashWindow('Preparing RestoBar POS...');
 
   const localIp = getLocalIp();
   const lanUrl = `http://${localIp}:${PORT}/pos`;
 
   try {
     log(`LAN URL: ${lanUrl}`);
+    log(`Bundled PHP: ${paths.php}`);
+    log(`Runtime Laravel: ${paths.laravel}`);
+
+    if (!fs.existsSync(paths.php)) {
+      throw new Error(`Bundled PHP was not found at ${paths.php}. Reinstall RestoBar POS from Setup.exe.`);
+    }
+
+    createSplashWindow('Setting up database...');
     await firstRunSetup(paths, lanUrl);
+
+    createSplashWindow('Starting local server...');
+    await killProcessOnPort(PORT);
     startLaravel(paths);
     await waitForServer();
     createWindow(lanUrl);
   } catch (error) {
+    closeSplashWindow();
     log(`Startup failed: ${error.stack || error.message}`);
     dialog.showErrorBox('RestoBar POS failed to start', `${error.message}\n\nLog file:\n${path.join(paths.logDir, 'electron.log')}`);
     app.quit();

@@ -13,6 +13,17 @@
             <div class="card shadow-sm">
                 <div class="card-body p-4">
                     <h1 class="h4 mb-3">RestoBar Login</h1>
+                    @if ($errors->any())
+                        <div class="alert alert-danger" role="alert">
+                            Wrong email or password.
+                        </div>
+                    @endif
+                    @if (config('desktop.lan_url'))
+                        <div class="alert alert-info py-2 small" role="status">
+                            Desktop app default login:<br>
+                            <strong>admin@restobar.test</strong> / <strong>password</strong>
+                        </div>
+                    @endif
                     <form method="POST" action="{{ route('login.store') }}">
                         @csrf
                         <div class="mb-3">
@@ -29,9 +40,6 @@
                         </div>
                         <button class="btn btn-dark w-100">Login</button>
                     </form>
-                    <div class="text-muted small mt-3">
-                        Demo accounts: admin@restobar.test or cashier@restobar.test, password: password
-                    </div>
                 </div>
             </div>
         </div>

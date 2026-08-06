@@ -6,9 +6,9 @@
     </div>
 
     <div class="d-flex align-items-center gap-3 me-2">
-        @if(env('DESKTOP_LAN_URL'))
+        @if(config('desktop.lan_url'))
             <div class="d-none d-xl-block small text-muted">
-                Connect other devices: <strong>{{ env('DESKTOP_LAN_URL') }}</strong>
+                Connect other devices: <strong>{{ config('desktop.lan_url') }}</strong>
             </div>
         @endif
         <button class="btn btn-outline-secondary btn-sm"><i class="bi bi-bell"></i></button>

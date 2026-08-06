@@ -23,7 +23,7 @@ class DatabaseBackupController extends Controller
             return back()->withErrors(['backup' => 'SQLite database file was not found.']);
         }
 
-        $backupDir = env('DESKTOP_BACKUP_DIR', base_path('backup'));
+        $backupDir = config('desktop.backup_dir', base_path('backup'));
         File::ensureDirectoryExists($backupDir);
 
         $backupPath = $backupDir . DIRECTORY_SEPARATOR . 'database-' . now()->format('Ymd-His') . '.sqlite';

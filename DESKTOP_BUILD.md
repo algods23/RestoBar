@@ -44,11 +44,35 @@ dist/Setup.exe
 
 ## Runtime Behavior
 
-- Electron starts `php/php.exe artisan serve --host=0.0.0.0 --port=8001`.
-- Electron waits for `http://127.0.0.1:8001` to respond before opening `/pos`.
+- Electron starts the bundled PHP server automatically on port `8001`.
+- You do **not** need Laragon, Node.js, or `php artisan serve`.
+- Electron waits for `http://127.0.0.1:8001/login` to respond before opening the POS window.
 - First launch automatically creates `.env`, `database.sqlite`, app key, and migrations.
-- The Laravel process is killed when Electron closes.
+- The NSIS installer relaunches the installed app when setup finishes.
+- The PHP server process is killed when Electron closes.
 - Only one Electron instance can run at a time.
+
+## Default Login (Installed App)
+
+The installed desktop app uses its own SQLite database in AppData, not your development project database.
+
+Use these default credentials on first launch:
+
+```text
+Email: admin@restobar.test
+Password: password
+```
+
+If login only works after you manually run `php artisan serve` from Laragon, you were connecting to the development database instead of the installed app's database. Close Laragon's server, open RestoBar POS from the desktop shortcut, and use the credentials above.
+
+## Troubleshooting
+
+If the app fails to start or login keeps refreshing:
+
+1. Open the log file at `%APPDATA%/RestoBar POS/logs/electron.log`.
+2. Confirm bundled PHP exists in the installed app folder under `resources/php/php.exe`.
+3. Make sure no other app is already using port `8001`.
+4. Reinstall from `dist/Setup.exe` if needed.
 
 ## LAN Access
 

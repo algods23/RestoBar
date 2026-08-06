@@ -1,6 +1,6 @@
 {
   "name": "restobar-pos-desktop",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Portable offline desktop build for the RestoBar Laravel POS.",
   "main": "app/electron/main.js",
   "author": "RestoBar",
@@ -22,6 +22,7 @@
   "build": {
     "appId": "com.restobar.pos",
     "productName": "RestoBar POS",
+    "artifactName": "Setup.${ext}",
     "asar": true,
     "directories": {
       "output": "dist"
@@ -55,7 +56,11 @@
           "storage/**",
           "vendor/**",
           ".env.example",
+          "!php/**",
           "!app/electron/**",
+          "!backup/**",
+          "!dist/**",
+          "!node_modules/**",
           "!database/*.sqlite",
           "!storage/logs/**",
           "!storage/framework/cache/**",
@@ -68,13 +73,14 @@
     "win": {
       "target": [
         "nsis"
-      ],
-      "artifactName": "Setup.exe"
+      ]
     },
     "nsis": {
       "oneClick": false,
+      "warningsAsErrors": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "RestoBar POS"
