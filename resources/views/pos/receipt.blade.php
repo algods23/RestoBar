@@ -264,8 +264,7 @@
 
 <div class="receipt-actions no-print">
     <div class="receipt-actions-title">Receipt Actions</div>
-    <button id="cashier_print_btn" class="print-btn" type="button">Print to Cashier</button>
-    <button class="back-btn" type="button" onclick="window.print()">Browser Print</button>
+    <button id="cashier_print_btn" class="print-btn" type="button">Print</button>
     <button class="back-btn" onclick="window.location.href='{{ route('pos.index') }}'">Back to POS</button>
     <div id="cashier_print_status" class="receipt-status"></div>
 </div>

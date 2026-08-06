@@ -5,8 +5,6 @@ namespace App\Support;
 use Mike42\Escpos\PrintConnectors\FilePrintConnector;
 use Mike42\Escpos\PrintConnectors\NetworkPrintConnector;
 use Mike42\Escpos\PrintConnectors\PrintConnector;
-use Mike42\Escpos\PrintConnectors\WindowsPrintConnector;
-
 class PrinterConnectorFactory
 {
     public static function make(string $printer, string $transport = 'auto'): PrintConnector
@@ -44,7 +42,7 @@ class PrinterConnectorFactory
         }
 
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            return new WindowsPrintConnector($printer);
+            return new WindowsSharedPrintConnector($printer);
         }
 
         if (is_file('/dev/usb/lp0')) {

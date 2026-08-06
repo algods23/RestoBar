@@ -39,16 +39,16 @@
     .footer { text-align: center; margin-top: 20px; font-size: 12px; }
 
     .receipt-actions {
-        width: 100%;
-        max-width: 58mm;
-        margin: 12px auto 0;
-        padding: 10px;
+        position: fixed;
+        top: 120px;
+        right: 32px;
+        width: 220px;
         background: #fff;
-        border: 1px solid #d6d6d6;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-        font-family: Arial, sans-serif;
-        font-size: 12px;
-        box-sizing: border-box;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        padding: 12px;
+        z-index: 20;
     }
 
     .receipt-actions-title {
@@ -103,6 +103,15 @@
     @media screen {
         body { background: #f0f0f0; padding: 20px; }
         .receipt { background: white; margin: 0 auto; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
+    }
+
+    @media screen and (max-width: 920px) {
+        .receipt-actions {
+            position: static;
+            max-width: 400px;
+            width: auto;
+            margin: 12px auto 0;
+        }
     }
 
     @media print {
@@ -184,10 +193,6 @@
     <div class="receipt-actions-title">Kitchen Printer</div>
     <div class="receipt-actions-row">
         <button id="server_print_btn" type="button">Print</button>
-        <button id="browser_print_btn" type="button">Browser</button>
-    </div>
-    <div class="receipt-actions-row">
-        <a href="{{ route('settings.index') }}" target="_blank" rel="noopener">Printer Setup</a>
     </div>
     <div id="print_status" class="receipt-status"></div>
 </div>
@@ -215,6 +220,11 @@
 
             status.className = 'receipt-status success';
             status.textContent = data.message || 'Printed';
+            
+            // Auto close the tab after a brief delay
+            setTimeout(() => {
+                window.close();
+            }, 1000);
         } catch (e) {
             status.className = 'receipt-status error';
             status.textContent = 'Error: ' + e.message;
@@ -223,8 +233,5 @@
         }
     });
 
-    document.getElementById('browser_print_btn').addEventListener('click', function() {
-        window.print();
-    });
 </script>
 @endsection

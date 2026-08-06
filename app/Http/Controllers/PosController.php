@@ -600,6 +600,7 @@ class PosController extends Controller
             'delivery' => 'DELIVERY',
         ];
 
+        $allItems = $additionalOnly ? $order->items->where('is_additional', true) : $order->items;
         foreach ($groups as $type => $label) {
             $items = $order->items->filter(fn ($i) => ($i->item_type ?? 'dine_in') === $type);
             if ($items->count()) {

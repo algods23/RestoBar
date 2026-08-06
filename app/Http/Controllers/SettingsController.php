@@ -33,11 +33,7 @@ class SettingsController extends Controller
 
         $cashierPrinter = trim((string) $request->input('cashier_printer'));
         $kitchenPrinter = trim((string) $request->input('kitchen_printer'));
-        if ($cashierPrinter !== '' && strcasecmp($cashierPrinter, $kitchenPrinter) === 0) {
-            return redirect()->back()
-                ->withInput()
-                ->withErrors(['kitchen_printer' => 'Kitchen printer must use a different Bluetooth port from the cashier printer.']);
-        }
+
 
         Setting::set('cashier_printer', $request->input('cashier_printer'));
         Setting::set('kitchen_printer', $request->input('kitchen_printer'));
@@ -56,16 +52,7 @@ class SettingsController extends Controller
 
         $key = $request->input('key');
         $value = trim((string) $request->input('value'));
-        if (in_array($key, ['cashier_printer', 'kitchen_printer'], true) && $value !== '') {
-            $otherKey = $key === 'cashier_printer' ? 'kitchen_printer' : 'cashier_printer';
-            $otherValue = trim((string) Setting::get($otherKey, ''));
-            if ($otherValue !== '' && strcasecmp($value, $otherValue) === 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'This Bluetooth port is already assigned to the other printer.',
-                ], 422);
-            }
-        }
+
 
         Setting::set($request->input('key'), $request->input('value'));
         return response()->json(['success' => true, 'message' => 'Saved']);
