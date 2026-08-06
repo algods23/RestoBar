@@ -27,7 +27,7 @@ class PrinterConnectorFactory
                 throw new \InvalidArgumentException('COM ports are only supported on Windows.');
             }
 
-            return new WindowsSerialPrintConnector(strtoupper($printer));
+            return new WindowsSerialPrintConnector(self::normalizeSerialPort($printer));
         }
 
         if (preg_match('/^(\d{1,3}\.){3}\d{1,3}(:\d+)?$/', $printer)) {
@@ -56,7 +56,16 @@ class PrinterConnectorFactory
 
     private static function isSerialPort(string $printer): bool
     {
-        return (bool) preg_match('/^COM\d+$/i', $printer);
+        return (bool) preg_match('/^(?:\\\\\\.\\\\)?(COM\d+):?$/i', trim($printer));
+    }
+
+    private static function normalizeSerialPort(string $printer): string
+    {
+        if (preg_match('/^(?:\\\\\\.\\\\)?(COM\d+):?$/i', trim($printer), $match)) {
+            return strtoupper($match[1]);
+        }
+
+        return strtoupper(trim($printer));
     }
 
     private static function isPlaceholder(string $printer): bool

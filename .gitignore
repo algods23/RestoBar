@@ -44,3 +44,6 @@ composer.phar
 
 # Ignore vendor if you prefer (leave commented if vendor is tracked)
 # /vendor
+
+# AI editor backups
+.codex-backups/

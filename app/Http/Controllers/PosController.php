@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Setting;
 use App\Models\Table;
 use App\Support\PrinterConnectorFactory;
+use App\Support\WindowsSerialPrintConnector;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -357,12 +358,16 @@ class PosController extends Controller
         $printers = [];
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
             $cmd = 'powershell -NoProfile -Command "Get-Printer -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Name"';
+            $res = WindowsSerialPrintConnector::runWithTimeout($cmd, 3);
+            if ($res['code'] === 0 && $res['output']) {
+                $printers = array_values(array_filter(explode("\n", str_replace("\r", "", $res['output']))));
+            }
         } else {
             $cmd = "lpstat -p | awk '{print $2}'";
-        }
-        exec($cmd, $output, $code);
-        if ($code === 0) {
-            $printers = array_values(array_filter($output));
+            exec($cmd, $output, $code);
+            if ($code === 0) {
+                $printers = array_values(array_filter($output));
+            }
         }
 
         return response()->json($printers);
@@ -376,13 +381,14 @@ class PosController extends Controller
         $devices = [];
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
             $cmd = 'powershell -NoProfile -Command "Get-PnpDevice -Class Bluetooth -ErrorAction SilentlyContinue | Select-Object FriendlyName,InstanceId,Status | ConvertTo-Json -Compress"';
-            exec($cmd, $output, $code);
+            $res = WindowsSerialPrintConnector::runWithTimeout($cmd, 3);
 
             $serialMap = [];
-            exec('powershell -NoProfile -Command "Get-WmiObject Win32_SerialPort -ErrorAction SilentlyContinue | Select-Object DeviceID,Caption,PNPDeviceID | ConvertTo-Json -Compress"', $spout, $scode);
-            if ($scode === 0) {
-                $sjson = implode(PHP_EOL, $spout);
-                $sdata = json_decode($sjson, true);
+            $spCmd = 'powershell -NoProfile -Command "Get-WmiObject Win32_SerialPort -ErrorAction SilentlyContinue | Select-Object DeviceID,Caption,PNPDeviceID | ConvertTo-Json -Compress"';
+            $spRes = WindowsSerialPrintConnector::runWithTimeout($spCmd, 3);
+
+            if ($spRes['code'] === 0 && $spRes['output']) {
+                $sdata = json_decode($spRes['output'], true);
                 if ($sdata) {
                     foreach ($this->rowsFromJson($sdata) as $row) {
                         $address = $this->bluetoothAddressFromText(($row['PNPDeviceID'] ?? '') . ' ' . ($row['Caption'] ?? ''));
@@ -396,9 +402,8 @@ class PosController extends Controller
                 }
             }
 
-            if ($code === 0) {
-                $json = implode(PHP_EOL, $output);
-                $data = json_decode($json, true);
+            if ($res['code'] === 0 && $res['output']) {
+                $data = json_decode($res['output'], true);
                 if ($data) {
                     foreach ($this->rowsFromJson($data) as $row) {
                         $name = trim($row['FriendlyName'] ?? '');
@@ -467,30 +472,26 @@ class PosController extends Controller
     {
         $ports = [];
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            // Use PowerShell to get Win32_SerialPort information as JSON
-            $cmd = 'powershell -NoProfile -Command "Get-WmiObject Win32_SerialPort -ErrorAction SilentlyContinue | Select-Object DeviceID,Caption | ConvertTo-Json -Compress"';
-            exec($cmd, $output, $code);
-            if ($code === 0) {
-                $json = implode(PHP_EOL, $output);
-                $data = json_decode($json, true);
-                if ($data) {
-                    if (isset($data[0])) {
-                        foreach ($data as $row) {
-                            $ports[] = ['id' => $row['DeviceID'] ?? '', 'caption' => $row['Caption'] ?? ''];
-                        }
-                    } else {
-                        $ports[] = ['id' => $data['DeviceID'] ?? '', 'caption' => $data['Caption'] ?? ''];
+            // 1. Fast registry query first (~10ms)
+            exec('reg query HKLM\HARDWARE\DEVICEMAP\SERIALCOMM 2>NUL', $registryOutput, $registryCode);
+            if ($registryCode === 0 && !empty($registryOutput)) {
+                foreach ($registryOutput as $line) {
+                    if (preg_match('/REG_SZ\s+(COM\d+)/i', $line, $match)) {
+                        $port = strtoupper($match[1]);
+                        $ports[] = ['id' => $port, 'caption' => 'Bluetooth serial port (' . $port . ')'];
                     }
                 }
             }
 
+            // 2. If registry returned nothing, fallback to PowerShell with timeout
             if ($ports === []) {
-                exec('reg query HKLM\HARDWARE\DEVICEMAP\SERIALCOMM', $registryOutput, $registryCode);
-                if ($registryCode === 0) {
-                    foreach ($registryOutput as $line) {
-                        if (preg_match('/REG_SZ\s+(COM\d+)/i', $line, $match)) {
-                            $port = strtoupper($match[1]);
-                            $ports[] = ['id' => $port, 'caption' => 'Bluetooth serial port (' . $port . ')'];
+                $cmd = 'powershell -NoProfile -Command "Get-WmiObject Win32_SerialPort -ErrorAction SilentlyContinue | Select-Object DeviceID,Caption | ConvertTo-Json -Compress"';
+                $res = WindowsSerialPrintConnector::runWithTimeout($cmd, 3);
+                if ($res['code'] === 0 && $res['output']) {
+                    $data = json_decode($res['output'], true);
+                    if ($data) {
+                        foreach ($this->rowsFromJson($data) as $row) {
+                            $ports[] = ['id' => $row['DeviceID'] ?? '', 'caption' => $row['Caption'] ?? ''];
                         }
                     }
                 }
