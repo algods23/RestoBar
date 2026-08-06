@@ -18,21 +18,19 @@
                             Wrong email or password.
                         </div>
                     @endif
-                    @if (config('desktop.lan_url'))
-                        <div class="alert alert-info py-2 small" role="status">
-                            Desktop app default login:<br>
-                            <strong>admin@restobar.test</strong> / <strong>password</strong>
-                        </div>
-                    @endif
+                    <div class="alert alert-info py-2 small" role="status">
+                        Desktop app default login:<br>
+                        <strong>admin@restobar.test</strong> / <strong>password</strong>
+                    </div>
                     <form method="POST" action="{{ route('login.store') }}">
                         @csrf
                         <div class="mb-3">
                             <label class="form-label">Email</label>
-                            <input type="email" name="email" class="form-control" required value="{{ old('email') }}">
+                            <input type="email" name="email" class="form-control" required value="{{ old('email', 'admin@restobar.test') }}">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Password</label>
-                            <input type="password" name="password" class="form-control" required>
+                            <input type="password" name="password" class="form-control" required value="{{ old('password', 'password') }}">
                         </div>
                         <div class="mb-3 form-check">
                             <input type="checkbox" name="remember" class="form-check-input" id="remember">

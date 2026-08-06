@@ -193,8 +193,7 @@ function ensureEnv(paths, lanUrl) {
   env = setEnvValue(env, 'APP_NAME', 'RestoBar');
   env = setEnvValue(env, 'APP_ENV', 'production');
   env = setEnvValue(env, 'APP_DEBUG', 'false');
-  env = setEnvValue(env, 'APP_URL', lanUrl);
-  env = setEnvValue(env, 'ASSET_URL', lanUrl);
+  env = setEnvValue(env, 'APP_URL', lanUrl.replace('/pos', ''));
   env = setEnvValue(env, 'DESKTOP_LAN_URL', lanUrl);
   env = setEnvValue(env, 'DESKTOP_BACKUP_DIR', paths.backupDir);
   env = setEnvValue(env, 'DB_CONNECTION', 'sqlite');
@@ -203,9 +202,24 @@ function ensureEnv(paths, lanUrl) {
   env = setEnvValue(env, 'CACHE_STORE', 'file');
   env = setEnvValue(env, 'QUEUE_CONNECTION', 'sync');
   env = setEnvValue(env, 'SESSION_DRIVER', 'file');
+  env = setEnvValue(env, 'SESSION_LIFETIME', '120');
   fs.writeFileSync(envPath, env);
 
   return { envPath, databasePath, hasAppKey: Boolean(readEnvValue(env, 'APP_KEY')) };
+}
+
+function clearCachedBootstrapFiles(paths) {
+  const cacheFiles = [
+    path.join(paths.laravel, 'bootstrap', 'cache', 'config.php'),
+    path.join(paths.laravel, 'bootstrap', 'cache', 'routes-v7.php'),
+    path.join(paths.laravel, 'bootstrap', 'cache', 'routes-v6.php')
+  ];
+
+  for (const cacheFile of cacheFiles) {
+    if (fs.existsSync(cacheFile)) {
+      fs.unlinkSync(cacheFile);
+    }
+  }
 }
 
 function runArtisan(paths, args) {
@@ -241,6 +255,7 @@ async function firstRunSetup(paths, lanUrl) {
 
   ensureRuntimeLaravel(paths);
   ensureLaravelStorage(paths);
+  clearCachedBootstrapFiles(paths);
   const env = ensureEnv(paths, lanUrl);
 
   if (!env.hasAppKey) {
@@ -248,6 +263,7 @@ async function firstRunSetup(paths, lanUrl) {
   }
 
   await runArtisan(paths, ['config:clear']);
+  await runArtisan(paths, ['optimize:clear']);
   await runArtisan(paths, ['migrate', '--force']);
   await runArtisan(paths, ['db:seed', '--force']);
 }
@@ -359,25 +375,7 @@ async function waitForServer(maxAttempts = 90) {
 }
 
 function createSplashWindow(message = 'Starting RestoBar POS...') {
-  splashWindow = new BrowserWindow({
-    width: 420,
-    height: 220,
-    resizable: false,
-    minimizable: false,
-    maximizable: false,
-    frame: true,
-    title: 'RestoBar POS',
-    alwaysOnTop: true,
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  });
-
-  const html = `<!doctype html><html><head><meta charset="utf-8"><title>RestoBar POS</title>
-<style>body{font-family:Segoe UI,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f8f9fa;color:#212529}div{text-align:center;padding:24px}h1{font-size:20px;margin:0 0 12px}p{margin:0;color:#6c757d;font-size:14px}</style>
-</head><body><div><h1>RestoBar POS</h1><p>${message}</p></div></body></html>`;
-  splashWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+  // Splash window is intentionally disabled to avoid annoying popups
 }
 
 function closeSplashWindow() {

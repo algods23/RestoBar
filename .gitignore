@@ -47,3 +47,6 @@ composer.phar
 
 # AI editor backups
 .codex-backups/
+
+/dist/
+/backup/
