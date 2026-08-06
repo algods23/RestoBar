@@ -324,21 +324,46 @@ class PosController extends Controller
             ->with('success', 'Transaction recorded.');
     }
 
-    public function receipt(Order $order): View
+    public function receipt(Request $request, Order $order): View
     {
-        $order->load('items.product', 'user', 'tables');
+        $itemIds = $this->additionalReceiptItemIds($request);
 
-        return view('pos.receipt', compact('order'));
-    }
-
-    public function kitchenReceipt(Request $request, Order $order): View
-    {
         $order->load([
-            'items' => function ($query) use ($request) {
+            'items' => function ($query) use ($request, $itemIds) {
                 $query->with('product');
 
                 if ($request->boolean('additional')) {
                     $query->where('is_additional', true);
+
+                    if ($itemIds !== []) {
+                        $query->whereIn('id', $itemIds);
+                    }
+                }
+            },
+            'user', 'tables'
+        ]);
+
+        return view('pos.receipt', [
+            'order' => $order,
+            'additionalOnly' => $request->boolean('additional'),
+            'additionalItemIds' => $itemIds,
+        ]);
+    }
+
+    public function kitchenReceipt(Request $request, Order $order): View
+    {
+        $itemIds = $this->additionalReceiptItemIds($request);
+
+        $order->load([
+            'items' => function ($query) use ($request, $itemIds) {
+                $query->with('product');
+
+                if ($request->boolean('additional')) {
+                    $query->where('is_additional', true);
+
+                    if ($itemIds !== []) {
+                        $query->whereIn('id', $itemIds);
+                    }
                 }
             },
             'tables',
@@ -347,6 +372,7 @@ class PosController extends Controller
         return view('pos.kitchen_receipt', [
             'order' => $order,
             'additionalOnly' => $request->boolean('additional'),
+            'additionalItemIds' => $itemIds,
         ]);
     }
 
@@ -529,6 +555,7 @@ class PosController extends Controller
             'printer' => ['nullable', 'string'],
             'transport' => ['nullable', 'in:auto,bluetooth'],
             'additional' => ['nullable', 'boolean'],
+            'item_ids' => ['nullable', 'string'],
             'receipt_type' => ['nullable', 'in:cashier,kitchen'],
         ]);
 
@@ -539,9 +566,10 @@ class PosController extends Controller
         $transport = $validated['transport'] ?? 'auto';
 
         $order->load('items.product', 'tables');
+        $itemIds = $this->additionalReceiptItemIds($request);
         $text = $receiptType === 'cashier'
-            ? $this->buildPlainCustomerReceipt($order)
-            : $this->buildPlainReceipt($order, $request->boolean('additional'));
+            ? $this->buildPlainCustomerReceipt($order, $request->boolean('additional'), $itemIds)
+            : $this->buildPlainReceipt($order, $request->boolean('additional'), $itemIds);
         $text .= PHP_EOL;
 
         // keep a copy for debugging
@@ -556,6 +584,7 @@ class PosController extends Controller
             $connector = PrinterConnectorFactory::make($printer, $transport);
             $escpos = new EscposPrinter($connector);
             $escpos->text($text);
+            $escpos->feed(3);
             $escpos->cut();
             $escpos->close();
 
@@ -579,7 +608,7 @@ class PosController extends Controller
         return 'Printing failed: ' . $message;
     }
 
-    private function buildPlainReceipt(Order $order, bool $additionalOnly = false): string
+    private function buildPlainReceipt(Order $order, bool $additionalOnly = false, array $itemIds = []): string
     {
         $lines = [];
         $lines[] = $additionalOnly ? 'ADDITIONAL ORDER' : 'KITCHEN ORDER';
@@ -601,8 +630,12 @@ class PosController extends Controller
         ];
 
         $allItems = $additionalOnly ? $order->items->where('is_additional', true) : $order->items;
+        if ($additionalOnly && $itemIds !== []) {
+            $allItems = $allItems->whereIn('id', $itemIds);
+        }
+
         foreach ($groups as $type => $label) {
-            $items = $order->items->filter(fn ($i) => ($i->item_type ?? 'dine_in') === $type);
+            $items = $allItems->filter(fn ($i) => ($i->item_type ?? 'dine_in') === $type);
             if ($items->count()) {
                 $lines[] = $label . ':';
                 foreach ($items as $item) {
@@ -618,10 +651,10 @@ class PosController extends Controller
         return implode(PHP_EOL, $lines);
     }
 
-    private function buildPlainCustomerReceipt(Order $order): string
+    private function buildPlainCustomerReceipt(Order $order, bool $additionalOnly = false, array $itemIds = []): string
     {
         $lines = [];
-        $lines[] = 'RESTOBAR POS';
+        $lines[] = $additionalOnly ? 'RESTOBAR POS - ADD-ON' : 'RESTOBAR POS';
         $lines[] = str_repeat('-', 40);
         $lines[] = 'Receipt #: ' . $order->id;
         $lines[] = 'Date: ' . $order->created_at->format('Y-m-d H:i');
@@ -634,7 +667,12 @@ class PosController extends Controller
         }
         $lines[] = str_repeat('-', 40);
 
-        foreach ($order->items as $item) {
+        $items = $additionalOnly ? $order->items->where('is_additional', true) : $order->items;
+        if ($additionalOnly && $itemIds !== []) {
+            $items = $items->whereIn('id', $itemIds);
+        }
+
+        foreach ($items as $item) {
             $name = $item->product?->name ?? 'N/A';
             $lines[] = $name;
             $lines[] = $item->quantity . ' x ' . number_format((float) $item->price, 2)
@@ -642,9 +680,13 @@ class PosController extends Controller
         }
 
         $lines[] = str_repeat('-', 40);
-        $lines[] = 'Subtotal: PHP ' . number_format((float) $order->subtotal, 2);
-        $lines[] = 'Discount: PHP ' . number_format((float) $order->discount_amount, 2);
-        $lines[] = 'TOTAL: PHP ' . number_format((float) $order->total_amount, 2);
+        if ($additionalOnly) {
+            $lines[] = 'Add-on subtotal: PHP ' . number_format((float) $items->sum('subtotal'), 2);
+        } else {
+            $lines[] = 'Subtotal: PHP ' . number_format((float) $order->subtotal, 2);
+            $lines[] = 'Discount: PHP ' . number_format((float) $order->discount_amount, 2);
+            $lines[] = 'TOTAL: PHP ' . number_format((float) $order->total_amount, 2);
+        }
         $lines[] = 'Payment: ' . str_replace('_', ' ', ucfirst($order->payment_method));
         if ($order->payment_reference) {
             $lines[] = 'Ref: ' . $order->payment_reference;
@@ -703,7 +745,9 @@ class PosController extends Controller
             return response()->json(['success' => false, 'message' => 'No active order found.'], 422);
         }
 
-        DB::transaction(function () use ($order, $cart, $request) {
+        $addedItemIds = DB::transaction(function () use ($order, $cart, $request) {
+            $addedItemIds = [];
+
             foreach ($cart as $cartItem) {
                 $product = Product::lockForUpdate()->findOrFail($cartItem['product_id']);
 
@@ -715,7 +759,7 @@ class PosController extends Controller
 
                 $lineSubtotal = $cartItem['price'] * $cartItem['quantity'];
 
-                OrderItem::create([
+                $orderItem = OrderItem::create([
                     'order_id'      => $order->id,
                     'product_id'    => $product->id,
                     'quantity'      => $cartItem['quantity'],
@@ -724,6 +768,7 @@ class PosController extends Controller
                     'item_type'     => $cartItem['item_type'] ?? 'dine_in',
                     'is_additional' => true,
                 ]);
+                $addedItemIds[] = $orderItem->id;
 
                 $previousStock = $product->stock;
                 $product->decrement('stock', $cartItem['quantity']);
@@ -757,6 +802,8 @@ class PosController extends Controller
                 'vat_amount'      => 0,
                 'total_amount'    => $total,
             ]);
+
+            return $addedItemIds;
         });
 
         $request->session()->forget('pos_cart');
@@ -764,8 +811,19 @@ class PosController extends Controller
         return response()->json([
             'success'             => true,
             'message'             => 'Items added to Order #' . $order->id,
-            'kitchen_receipt_url' => route('orders.kitchen_receipt', ['order' => $order, 'additional' => 1]),
+            'receipt_url'         => route('orders.receipt', ['order' => $order, 'additional' => 1, 'item_ids' => implode(',', $addedItemIds)]),
+            'kitchen_receipt_url' => route('orders.kitchen_receipt', ['order' => $order, 'additional' => 1, 'item_ids' => implode(',', $addedItemIds)]),
         ]);
+    }
+
+    private function additionalReceiptItemIds(Request $request): array
+    {
+        return collect(explode(',', (string) $request->input('item_ids', '')))
+            ->map(fn ($id) => (int) trim($id))
+            ->filter(fn ($id) => $id > 0)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     private function cart(): array

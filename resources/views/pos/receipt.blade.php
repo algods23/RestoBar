@@ -149,8 +149,10 @@
 </style>
 
 @php
-    $regularItems = $order->items->where('is_additional', false);
-    $addonItems = $order->items->where('is_additional', true);
+    $additionalItemIds = $additionalItemIds ?? [];
+    $items = $additionalOnly ? $order->items->where('is_additional', true) : $order->items;
+    $regularItems = $items->where('is_additional', false);
+    $addonItems = $items->where('is_additional', true);
     $typeLabel = fn ($type) => match ($type) {
         'takeout' => 'Takeout',
         'delivery' => 'Delivery',
@@ -233,19 +235,26 @@
     <hr class="dashed">
 
     <div class="summary">
-        <div class="summary-row">
-            <span>Subtotal</span>
-            <span>PHP {{ number_format($order->subtotal, 2) }}</span>
-        </div>
-        <div class="summary-row">
-            <span>Discount ({{ number_format($order->discount_percentage, 2) }}%)</span>
-            <span>PHP {{ number_format($order->discount_amount, 2) }}</span>
-        </div>
-        <hr class="dashed">
-        <div class="summary-row total">
-            <span>TOTAL</span>
-            <span>PHP {{ number_format($order->total_amount, 2) }}</span>
-        </div>
+        @if($additionalOnly)
+            <div class="summary-row total">
+                <span>ADD-ON TOTAL</span>
+                <span>PHP {{ number_format($addonItems->sum('subtotal'), 2) }}</span>
+            </div>
+        @else
+            <div class="summary-row">
+                <span>Subtotal</span>
+                <span>PHP {{ number_format($order->subtotal, 2) }}</span>
+            </div>
+            <div class="summary-row">
+                <span>Discount ({{ number_format($order->discount_percentage, 2) }}%)</span>
+                <span>PHP {{ number_format($order->discount_amount, 2) }}</span>
+            </div>
+            <hr class="dashed">
+            <div class="summary-row total">
+                <span>TOTAL</span>
+                <span>PHP {{ number_format($order->total_amount, 2) }}</span>
+            </div>
+        @endif
     </div>
 
     <hr class="dashed">
@@ -286,7 +295,11 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify({ receipt_type: 'cashier' }),
+                body: JSON.stringify({
+                    receipt_type: 'cashier',
+                    additional: {{ !empty($additionalOnly) ? '1' : '0' }},
+                    item_ids: @json(implode(',', $additionalItemIds)),
+                }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Print failed');

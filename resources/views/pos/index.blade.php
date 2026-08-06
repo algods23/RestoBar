@@ -871,6 +871,9 @@ document.getElementById('confirmAddToOrderBtn').addEventListener('click', async 
             if (data.kitchen_receipt_url) {
                 window.open(data.kitchen_receipt_url, 'additional_kitchen_receipt', 'width=400,height=600');
             }
+            if (data.receipt_url) {
+                window.open(data.receipt_url, 'additional_receipt', 'width=400,height=600');
+            }
             showToast(data.message || 'Items added to order successfully.');
         } else {
             alert(data.message || 'Failed to add items to order.');

@@ -134,9 +134,11 @@
     </div>
 
     @php
-        $dineItems = $order->items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'dine_in');
-        $takeItems = $order->items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'takeout');
-        $deliveryItems = $order->items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'delivery');
+        $additionalItemIds = $additionalItemIds ?? [];
+        $items = $additionalOnly ? $order->items->where('is_additional', true) : $order->items;
+        $dineItems = $items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'dine_in');
+        $takeItems = $items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'takeout');
+        $deliveryItems = $items->filter(fn($i) => ($i->item_type ?? 'dine_in') === 'delivery');
     @endphp
 
     @if($dineItems->count())
@@ -213,7 +215,10 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
                 credentials: 'same-origin',
-                body: JSON.stringify({ additional: {{ !empty($additionalOnly) ? '1' : '0' }} })
+                body: JSON.stringify({
+                    additional: {{ !empty($additionalOnly) ? '1' : '0' }},
+                    item_ids: @json(implode(',', $additionalItemIds))
+                })
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.message || 'Print failed');

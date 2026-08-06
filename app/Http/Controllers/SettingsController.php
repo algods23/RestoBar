@@ -77,6 +77,7 @@ class SettingsController extends Controller
             $connector = PrinterConnectorFactory::make($printer, $transport);
             $escpos = new EscposPrinter($connector);
             $escpos->text($text);
+            $escpos->feed(3);
             $escpos->cut();
             $escpos->close();
             return response()->json(['success' => true, 'message' => 'Test printed']);

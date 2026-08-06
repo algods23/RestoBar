@@ -50,7 +50,6 @@
                         </div>
 
                         <div class="d-flex flex-wrap gap-2 mt-3">
-                            <button data-printer-type="cashier" type="button" class="btn btn-outline-primary scan-btn">Scan Cashier Printer</button>
                             <button data-printer-type="cashier" type="button" class="btn btn-secondary test-btn">Connect & Test</button>
                         </div>
 
@@ -96,7 +95,6 @@
                         </div>
 
                         <div class="d-flex flex-wrap gap-2 mt-3">
-                            <button data-printer-type="kitchen" type="button" class="btn btn-outline-primary scan-btn">Scan Kitchen Printer</button>
                             <button data-printer-type="kitchen" type="button" class="btn btn-secondary test-btn">Connect & Test</button>
                         </div>
 

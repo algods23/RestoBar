@@ -41,13 +41,13 @@ class WindowsSerialPrintConnector implements PrintConnector
         file_put_contents($file, $this->buffer);
 
         try {
-            // Configure mode with a 3-second hard timeout
+            // Configure mode with a 5-second hard timeout
             $modeCmd = "mode {$port}: BAUD=9600 PARITY=N DATA=8 STOP=1";
-            self::runWithTimeout($modeCmd, 3);
+            self::runWithTimeout($modeCmd, 5);
 
-            // Copy file to COM port with a 4-second hard timeout
+            // Copy file to COM port with a 8-second hard timeout
             $copyCmd = 'cmd /C copy /B ' . escapeshellarg($file) . ' ' . $port;
-            $copyRes = self::runWithTimeout($copyCmd, 4);
+            $copyRes = self::runWithTimeout($copyCmd, 8);
 
             if ($copyRes['code'] !== 0) {
                 $errDetail = $copyRes['error'] ?: $copyRes['output'];

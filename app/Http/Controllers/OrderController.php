@@ -151,7 +151,7 @@ class OrderController extends Controller
             'item_type'  => 'required|in:dine_in,takeout,delivery',
         ]);
 
-        DB::transaction(function () use ($validated, $order, $request) {
+        $orderItemId = DB::transaction(function () use ($validated, $order, $request) {
             $product = Product::lockForUpdate()->findOrFail($validated['product_id']);
             
             if ($product->stock < $validated['quantity']) {
@@ -189,11 +189,13 @@ class OrderController extends Controller
             ]);
 
             $this->recalculateOrder($order);
+
+            return $orderItem->id;
         });
 
         return back()
             ->with('success', 'Item added to order.')
-            ->with('additional_kitchen_receipt_url', route('orders.kitchen_receipt', ['order' => $order, 'additional' => 1]));
+            ->with('additional_kitchen_receipt_url', route('orders.kitchen_receipt', ['order' => $order, 'additional' => 1, 'item_ids' => $orderItemId]));
     }
 
     public function removeItem(Order $order, OrderItem $item): RedirectResponse
