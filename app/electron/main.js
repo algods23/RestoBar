@@ -272,9 +272,9 @@ function phpEnvironment(paths) {
   const phpDir = path.dirname(paths.php);
   return {
     ...process.env,
-    APP_ENV: 'production',
+    APP_ENV: app.isPackaged ? 'production' : 'local',
     PHPRC: phpDir,
-    PHP_INI_SCAN_DIR: phpDir,
+    PHP_INI_SCAN_DIR: '',
     PATH: `${phpDir};${process.env.PATH || ''}`,
     SystemRoot: process.env.SystemRoot || process.env.WINDIR || 'C:\\Windows'
   };
@@ -475,10 +475,16 @@ app.whenReady().then(async () => {
     createSplashWindow('Setting up database...');
     await firstRunSetup(paths, lanUrl);
 
-    createSplashWindow('Starting local server...');
-    await killProcessOnPort(PORT);
-    startLaravel(paths);
-    await waitForServer();
+    const alreadyRunning = await isHttpReady('/pos');
+    if (alreadyRunning) {
+      log('An existing server is already running on port 8001. Skipping internal server launch.');
+    } else {
+      createSplashWindow('Starting local server...');
+      await killProcessOnPort(PORT);
+      startLaravel(paths);
+      await waitForServer();
+    }
+
     createWindow(lanUrl);
   } catch (error) {
     closeSplashWindow();
