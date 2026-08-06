@@ -108,6 +108,21 @@
             <button class="btn btn-primary" type="submit">Save Printer Settings</button>
         </div>
     </form>
+
+    <div class="card mt-4">
+        <div class="card-body d-flex justify-content-between align-items-center gap-3">
+            <div>
+                <h5 class="mb-1">Database Backup</h5>
+                <p class="text-muted small mb-0">Create a copy of the local SQLite database.</p>
+            </div>
+            <form method="POST" action="{{ route('settings.backup_database') }}">
+                @csrf
+                <button class="btn btn-outline-primary" type="submit">
+                    <i class="bi bi-database-down me-1"></i> Backup SQLite Database
+                </button>
+            </form>
+        </div>
+    </div>
 </div>
 
 <script>

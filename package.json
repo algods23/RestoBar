@@ -1,0 +1,83 @@
+{
+  "name": "restobar-pos-desktop",
+  "version": "1.0.0",
+  "description": "Portable offline desktop build for the RestoBar Laravel POS.",
+  "main": "app/electron/main.js",
+  "author": "RestoBar",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "postinstall": "node app/electron/copy-web-assets.js",
+    "start": "electron .",
+    "build": "electron-builder --win nsis"
+  },
+  "dependencies": {
+    "bootstrap": "^5.3.3",
+    "bootstrap-icons": "^1.11.3"
+  },
+  "devDependencies": {
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.restobar.pos",
+    "productName": "RestoBar POS",
+    "asar": true,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "app/electron/**",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "php",
+        "to": "php",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": ".",
+        "to": "laravel",
+        "filter": [
+          "app/**",
+          "artisan",
+          "bootstrap/**",
+          "composer.json",
+          "composer.lock",
+          "config/**",
+          "database/**",
+          "public/**",
+          "resources/**",
+          "routes/**",
+          "storage/**",
+          "vendor/**",
+          ".env.example",
+          "!app/electron/**",
+          "!database/*.sqlite",
+          "!storage/logs/**",
+          "!storage/framework/cache/**",
+          "!storage/framework/sessions/**",
+          "!storage/framework/views/**",
+          "!storage/app/prints/**"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "Setup.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "RestoBar POS"
+    }
+  }
+}

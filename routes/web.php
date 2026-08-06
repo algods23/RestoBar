@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\DatabaseBackupController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\OrderController;
@@ -69,4 +70,5 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings', [App\Http\Controllers\SettingsController::class, 'save'])->name('settings.save');
     Route::post('/settings/test-print', [App\Http\Controllers\SettingsController::class, 'testPrint'])->name('settings.test_print');
     Route::post('/settings/save-key', [App\Http\Controllers\SettingsController::class, 'saveKey'])->name('settings.save_key');
+    Route::post('/settings/backup-database', [DatabaseBackupController::class, 'store'])->name('settings.backup_database');
 });
