@@ -89,6 +89,32 @@ function runtimeVersionPath(paths) {
   return path.join(paths.laravel, '.runtime-version');
 }
 
+function bundledRuntimeSignature(paths) {
+  const files = [
+    'artisan',
+    'package.json',
+    path.join('public', 'vendor', 'bootstrap', 'css', 'bootstrap.min.css'),
+    path.join('public', 'vendor', 'bootstrap', 'js', 'bootstrap.bundle.min.js'),
+    path.join('public', 'vendor', 'bootstrap-icons', 'bootstrap-icons.css'),
+    path.join('resources', 'views', 'layouts', 'app.blade.php'),
+    path.join('resources', 'views', 'pos', 'index.blade.php')
+  ];
+
+  return files.map(relativePath => {
+    const filePath = path.join(paths.bundledLaravel, relativePath);
+    if (!fs.existsSync(filePath)) {
+      return `${relativePath}:missing`;
+    }
+
+    const stat = fs.statSync(filePath);
+    return `${relativePath}:${stat.size}:${Math.floor(stat.mtimeMs)}`;
+  }).join('|');
+}
+
+function runtimeSignaturePath(paths) {
+  return path.join(paths.laravel, '.runtime-signature');
+}
+
 function needsRuntimeSync(paths) {
   if (!app.isPackaged || !fs.existsSync(paths.laravel)) {
     return true;
@@ -99,11 +125,21 @@ function needsRuntimeSync(paths) {
     return true;
   }
 
-  return fs.readFileSync(versionFile, 'utf8').trim() !== app.getVersion();
+  if (fs.readFileSync(versionFile, 'utf8').trim() !== app.getVersion()) {
+    return true;
+  }
+
+  const signatureFile = runtimeSignaturePath(paths);
+  if (!fs.existsSync(signatureFile)) {
+    return true;
+  }
+
+  return fs.readFileSync(signatureFile, 'utf8').trim() !== bundledRuntimeSignature(paths);
 }
 
 function markRuntimeSynced(paths) {
   fs.writeFileSync(runtimeVersionPath(paths), `${app.getVersion()}\n`);
+  fs.writeFileSync(runtimeSignaturePath(paths), `${bundledRuntimeSignature(paths)}\n`);
 }
 
 function copyDirectory(source, destination, relativeRoot = '') {
