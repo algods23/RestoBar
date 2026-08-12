@@ -1,6 +1,6 @@
 {
   "name": "restobar-pos-desktop",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Portable offline desktop build for the RestoBar Laravel POS.",
   "main": "app/electron/main.js",
   "author": "RestoBar",

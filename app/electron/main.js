@@ -14,7 +14,6 @@ let mainWindow = null;
 let splashWindow = null;
 let laravelProcess = null;
 let logStream = null;
-let activeLanUrl = '';
 
 app.setName('RestoBar POS');
 
@@ -78,6 +77,7 @@ function shouldSkipRuntimeFile(relativePath) {
   const normalized = relativePath.replace(/\\/g, '/');
   return normalized === '.env'
     || normalized === '.runtime-version'
+    || normalized === '.runtime-signature'
     || normalized === 'database/database.sqlite'
     || normalized.startsWith('backup/')
     || normalized.startsWith('storage/logs/')
@@ -115,8 +115,23 @@ function runtimeSignaturePath(paths) {
   return path.join(paths.laravel, '.runtime-signature');
 }
 
+function hasRequiredRuntimeAssets(paths) {
+  const requiredFiles = [
+    path.join(paths.laravel, 'public', 'vendor', 'bootstrap', 'css', 'bootstrap.min.css'),
+    path.join(paths.laravel, 'public', 'vendor', 'bootstrap', 'js', 'bootstrap.bundle.min.js'),
+    path.join(paths.laravel, 'public', 'vendor', 'bootstrap-icons', 'bootstrap-icons.css'),
+    path.join(paths.laravel, 'public', 'vendor', 'bootstrap-icons', 'fonts', 'bootstrap-icons.woff2')
+  ];
+
+  return requiredFiles.every(filePath => fs.existsSync(filePath) && fs.statSync(filePath).size > 0);
+}
+
 function needsRuntimeSync(paths) {
   if (!app.isPackaged || !fs.existsSync(paths.laravel)) {
+    return true;
+  }
+
+  if (!hasRequiredRuntimeAssets(paths)) {
     return true;
   }
 
@@ -372,9 +387,9 @@ function isPortReady() {
   });
 }
 
-function isHttpReady(requestPath = '/pos') {
+function isHttpReady(baseUrl = LOCAL_URL, requestPath = '/pos') {
   return new Promise(resolve => {
-    const req = http.get(`${LOCAL_URL}${requestPath}`, res => {
+    const req = http.get(`${baseUrl}${requestPath}`, res => {
       res.resume();
       resolve(res.statusCode >= 200 && res.statusCode < 500);
     });
@@ -389,7 +404,7 @@ function isHttpReady(requestPath = '/pos') {
 async function waitForServer(maxAttempts = 90) {
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const portReady = await isPortReady();
-    const httpReady = portReady ? await isHttpReady('/pos') : false;
+    const httpReady = portReady ? await isHttpReady(LOCAL_URL, '/pos') : false;
 
     if (httpReady) {
       log(`RestoBar server is ready at ${LOCAL_URL}/pos`);
@@ -420,9 +435,8 @@ function closeSplashWindow() {
   splashWindow = null;
 }
 
-function createWindow(lanUrl) {
+function createWindow() {
   closeSplashWindow();
-  activeLanUrl = lanUrl;
 
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -436,6 +450,8 @@ function createWindow(lanUrl) {
     }
   });
 
+  mainWindow.setMenuBarVisibility(false);
+
   mainWindow.webContents.on('page-title-updated', event => {
     event.preventDefault();
   });
@@ -443,38 +459,6 @@ function createWindow(lanUrl) {
   mainWindow.loadURL(`${LOCAL_URL}/pos`);
   mainWindow.webContents.on('did-finish-load', () => {
     mainWindow.setTitle('RestoBar POS');
-
-    if (!activeLanUrl) {
-      return;
-    }
-
-    const bannerScript = `
-      (() => {
-        const lanUrl = ${JSON.stringify(activeLanUrl)};
-        const existing = document.getElementById('restobar-lan-banner');
-        if (existing) existing.remove();
-
-        const banner = document.createElement('div');
-        banner.id = 'restobar-lan-banner';
-        banner.innerHTML = '<strong>Access this system via:</strong> <span>' + lanUrl + '</span>';
-        banner.style.position = 'fixed';
-        banner.style.top = '0';
-        banner.style.left = '0';
-        banner.style.right = '0';
-        banner.style.zIndex = '2147483647';
-        banner.style.padding = '10px 16px';
-        banner.style.background = 'rgba(17, 24, 39, 0.96)';
-        banner.style.color = '#f9fafb';
-        banner.style.font = '600 13px Segoe UI, sans-serif';
-        banner.style.letterSpacing = '0.01em';
-        banner.style.boxShadow = '0 2px 14px rgba(0, 0, 0, 0.25)';
-        banner.style.pointerEvents = 'none';
-        document.body.appendChild(banner);
-        document.body.style.paddingTop = '44px';
-      })();
-    `;
-
-    mainWindow.webContents.executeJavaScript(bannerScript).catch(() => {});
   });
 
   mainWindow.on('closed', () => {
@@ -511,17 +495,22 @@ app.whenReady().then(async () => {
     createSplashWindow('Setting up database...');
     await firstRunSetup(paths, lanUrl);
 
-    const alreadyRunning = await isHttpReady('/pos');
-    if (alreadyRunning) {
-      log('An existing server is already running on port 8001. Skipping internal server launch.');
+    const lanBaseUrl = lanUrl.replace('/pos', '');
+    const localServerReady = await isHttpReady(LOCAL_URL, '/pos');
+    const lanServerReady = localServerReady ? await isHttpReady(lanBaseUrl, '/pos') : false;
+    if (localServerReady && lanServerReady) {
+      log(`An existing server is already running on port 8001 and is reachable at ${lanUrl}. Skipping internal server launch.`);
     } else {
       createSplashWindow('Starting local server...');
+      if (localServerReady && !lanServerReady) {
+        log('Existing server on port 8001 is not reachable through the LAN IP. Restarting it with host 0.0.0.0.');
+      }
       await killProcessOnPort(PORT);
       startLaravel(paths);
       await waitForServer();
     }
 
-    createWindow(lanUrl);
+    createWindow();
   } catch (error) {
     closeSplashWindow();
     log(`Startup failed: ${error.stack || error.message}`);
